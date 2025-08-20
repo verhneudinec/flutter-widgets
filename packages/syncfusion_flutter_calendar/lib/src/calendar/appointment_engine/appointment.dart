@@ -75,7 +75,7 @@ class Appointment with Diagnosticable {
     this.endTimeZone,
     this.recurrenceRule,
     this.isAllDay = false,
-    String? notes,
+    this.notes,
     this.location,
     this.resourceIds,
     this.recurrenceId,
@@ -85,17 +85,11 @@ class Appointment with Diagnosticable {
     this.subject = '',
     this.color = Colors.lightBlue,
     this.recurrenceExceptionDates,
-  }) : notes =
-           notes != null && notes.contains('isOccurrenceAppointment')
-               ? notes.replaceAll('isOccurrenceAppointment', '')
-               : notes,
-       _notes = notes {
+  }) {
     recurrenceRule = recurrenceId != null ? null : recurrenceRule;
     _appointmentType = _getAppointmentType();
     id = id ?? hashCode;
   }
-
-  String? _notes;
 
   /// The start time for an [Appointment] in [SfCalendar].
   ///
@@ -943,8 +937,8 @@ class Appointment with Diagnosticable {
     if (recurrenceId != null) {
       return AppointmentType.changedOccurrence;
     } else if (recurrenceRule != null && recurrenceRule!.isNotEmpty) {
-      if (_notes != null && _notes!.contains('isOccurrenceAppointment')) {
-        _notes = _notes!.replaceAll('isOccurrenceAppointment', '');
+      if (notes != null && notes!.contains('isOccurrenceAppointment')) {
+        notes = notes!.replaceAll('isOccurrenceAppointment', '');
         return AppointmentType.occurrence;
       }
 
@@ -1022,21 +1016,14 @@ class Appointment with Diagnosticable {
     properties.add(ColorProperty('color', color));
     properties.add(DiagnosticsProperty<Object>('recurrenceId', recurrenceId));
     properties.add(DiagnosticsProperty<Object>('id', id));
-    properties.add(
-      EnumProperty<AppointmentType>('appointmentType', appointmentType),
-    );
+    properties
+        .add(EnumProperty<AppointmentType>('appointmentType', appointmentType));
     properties.add(DiagnosticsProperty<DateTime>('startTime', startTime));
     properties.add(DiagnosticsProperty<DateTime>('endTime', endTime));
-    properties.add(
-      IterableDiagnostics<DateTime>(
-        recurrenceExceptionDates,
-      ).toDiagnosticsNode(name: 'recurrenceExceptionDates'),
-    );
-    properties.add(
-      IterableDiagnostics<Object>(
-        resourceIds,
-      ).toDiagnosticsNode(name: 'resourceIds'),
-    );
+    properties.add(IterableDiagnostics<DateTime>(recurrenceExceptionDates)
+        .toDiagnosticsNode(name: 'recurrenceExceptionDates'));
+    properties.add(IterableDiagnostics<Object>(resourceIds)
+        .toDiagnosticsNode(name: 'resourceIds'));
     properties.add(DiagnosticsProperty<bool>('isAllDay', isAllDay));
   }
 }
