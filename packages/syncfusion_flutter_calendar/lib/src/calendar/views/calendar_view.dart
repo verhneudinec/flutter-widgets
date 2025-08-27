@@ -217,6 +217,7 @@ class _CustomCalendarScrollViewState extends State<CustomCalendarScrollView>
 
   // _position contains distance that the view swiped
   double _position = 0;
+  bool _nextPageDataPreloaded = false;
 
   // animation controller to control the animation
   late AnimationController _animationController;
@@ -4917,6 +4918,7 @@ class _CustomCalendarScrollViewState extends State<CustomCalendarScrollView>
       double viewHeaderHeight,
       double timeLabelWidth,
       bool isNeedDragAndDrop) {
+    _nextPageDataPreloaded = false;
     final _CalendarViewState currentState = _getCurrentViewByVisibleDates()!;
     if (currentState._hoveringAppointmentView != null &&
         currentState._hoveringAppointmentView!.appointment != null &&
@@ -4995,6 +4997,7 @@ class _CustomCalendarScrollViewState extends State<CustomCalendarScrollView>
                   widget.calendar.timeSlotViewSettings.nonWorkingDays,
                   widget.isRTL)) {
             _position = 0;
+            _nextPageDataPreloaded = false;
             return;
           } else if (difference > 0 &&
               !DateTimeHelper.canMoveToPreviousView(
@@ -5006,10 +5009,20 @@ class _CustomCalendarScrollViewState extends State<CustomCalendarScrollView>
                   widget.calendar.timeSlotViewSettings.nonWorkingDays,
                   widget.isRTL)) {
             _position = 0;
+            _nextPageDataPreloaded = false;
             return;
           }
           _position = difference;
           _clearSelection();
+          
+          // Update the visible dates based on swipe direction
+          // This makes appointments visible during the swipe - but only once per swipe
+          if (!_nextPageDataPreloaded && _position.abs() > 0) {
+            final bool isNextView = _position < 0;
+            _updateCurrentViewVisibleDates(isNextView: isNextView);
+            _nextPageDataPreloaded = true;
+          }
+          
           setState(() {
             /* Updates the widget navigated distance and moves the widget
        in the custom scroll view */
@@ -5181,6 +5194,8 @@ class _CustomCalendarScrollViewState extends State<CustomCalendarScrollView>
       double viewHeaderHeight,
       double timeLabelWidth,
       bool isNeedDragAndDrop) {
+    // Сбрасываем флаг при начале нового свайпа
+    _nextPageDataPreloaded = false;
     final _CalendarViewState currentState = _getCurrentViewByVisibleDates()!;
     if (currentState._hoveringAppointmentView != null &&
         currentState._hoveringAppointmentView!.appointment != null &&
@@ -5250,8 +5265,10 @@ class _CustomCalendarScrollViewState extends State<CustomCalendarScrollView>
                   widget.calendar.minDate,
                   widget.calendar.maxDate,
                   _currentViewVisibleDates,
-                  widget.calendar.timeSlotViewSettings.nonWorkingDays)) {
+                  widget.calendar.timeSlotViewSettings.nonWorkingDays,
+                  widget.isRTL)) {
             _position = 0;
+            _nextPageDataPreloaded = false;
             return;
           } else if (difference > 0 &&
               !DateTimeHelper.canMoveToPreviousView(
@@ -5260,8 +5277,10 @@ class _CustomCalendarScrollViewState extends State<CustomCalendarScrollView>
                   widget.calendar.minDate,
                   widget.calendar.maxDate,
                   _currentViewVisibleDates,
-                  widget.calendar.timeSlotViewSettings.nonWorkingDays)) {
+                  widget.calendar.timeSlotViewSettings.nonWorkingDays,
+                  widget.isRTL)) {
             _position = 0;
+            _nextPageDataPreloaded = false;
             return;
           }
           _position = difference;
