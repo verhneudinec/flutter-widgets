@@ -3421,6 +3421,15 @@ class _CustomCalendarScrollViewState extends State<CustomCalendarScrollView>
     widget.updateCalendarState(_updateCalendarStateDetails);
   }
 
+  void _clearDataCache() {
+    _nextPageDataPreloaded = false;
+    final _CalendarViewState? currentView = _getCurrentViewByVisibleDates();
+    if (currentView != null) {
+      _updateCalendarStateDetails.visibleAppointments = <CalendarAppointment>[];
+      widget.updateCalendarState(_updateCalendarStateDetails);
+    }
+  }
+
   void _updateNextView() {
     if (!_animationController.isCompleted) {
       return;
@@ -3428,6 +3437,9 @@ class _CustomCalendarScrollViewState extends State<CustomCalendarScrollView>
 
     _updateSelection();
     _updateNextViewVisibleDates();
+    
+    // Clear old data cache
+    _clearDataCache();
 
     /// Updates the all day panel of the view, when the all day panel expanded
     /// and the view swiped with the expanded all day panel, and when we swipe
@@ -3465,6 +3477,9 @@ class _CustomCalendarScrollViewState extends State<CustomCalendarScrollView>
 
     _updateSelection();
     _updatePreviousViewVisibleDates();
+    
+    // Clear old data cache
+    _clearDataCache();
 
     /// Updates the all day panel of the view, when the all day panel expanded
     /// and the view swiped with the expanded all day panel, and when we swipe
