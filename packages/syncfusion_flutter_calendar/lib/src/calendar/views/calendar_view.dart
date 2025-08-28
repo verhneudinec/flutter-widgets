@@ -3437,7 +3437,7 @@ class _CustomCalendarScrollViewState extends State<CustomCalendarScrollView>
 
     _updateSelection();
     _updateNextViewVisibleDates();
-    
+
     // Clear old data cache
     _clearDataCache();
 
@@ -3477,7 +3477,7 @@ class _CustomCalendarScrollViewState extends State<CustomCalendarScrollView>
 
     _updateSelection();
     _updatePreviousViewVisibleDates();
-    
+
     // Clear old data cache
     _clearDataCache();
 
@@ -5033,7 +5033,7 @@ class _CustomCalendarScrollViewState extends State<CustomCalendarScrollView>
           }
           _position = difference;
           _clearSelection();
-          
+
           // Update the visible dates based on swipe direction
           // This makes appointments visible during the swipe - but only once per swipe
           if (widget.enablePreload && !_nextPageDataPreloaded && _position.abs() > 0) {
@@ -5041,7 +5041,7 @@ class _CustomCalendarScrollViewState extends State<CustomCalendarScrollView>
             _updateCurrentViewVisibleDates(isNextView: isNextView);
             _nextPageDataPreloaded = true;
           }
-          
+
           setState(() {
             /* Updates the widget navigated distance and moves the widget
        in the custom scroll view */
@@ -5687,14 +5687,16 @@ class _CalendarViewState extends State<_CalendarView>
         widget.view != CalendarView.month) {
       _animationController = AnimationController(
           duration: const Duration(milliseconds: 200), vsync: this);
-      _heightAnimation =
-          CurveTween(curve: Curves.easeIn).animate(_animationController!)
-            ..addListener(() {
-              setState(() {
-                /* Animates the all day panel height when
+      
+      if (!widget.calendar.enablePreload)
+        _heightAnimation =
+            CurveTween(curve: Curves.easeIn).animate(_animationController!)
+          ..addListener(() {
+            setState(() {
+              /* Animates the all day panel height when
               expanding or collapsing */
-              });
             });
+          });
 
       _expanderAnimationController = AnimationController(
           duration: const Duration(milliseconds: 100), vsync: this);
@@ -6118,7 +6120,8 @@ class _CalendarViewState extends State<_CalendarView>
           _updateCalendarStateDetails.allDayPanelHeight > _kAllDayLayoutHeight
               ? _kAllDayLayoutHeight
               : _updateCalendarStateDetails.allDayPanelHeight;
-      _allDayHeight = _allDayHeight * _heightAnimation!.value;
+      if (_heightAnimation != null)
+        _allDayHeight = _allDayHeight * _heightAnimation!.value;
     }
   }
 
@@ -6571,7 +6574,7 @@ class _CalendarViewState extends State<_CalendarView>
             : null,
         timeLabelWidth,
         allDayExpanderHeight,
-        panelHeight > 0 && (_heightAnimation!.value == 1 || isDayView),
+        panelHeight > 0 && (_heightAnimation == null || _heightAnimation!.value == 1 || isDayView),
         _allDayExpanderAnimation!.value != 0.0 &&
             _allDayExpanderAnimation!.value != 1,
         _isRTL,
