@@ -47,6 +47,7 @@ class CustomCalendarScrollView extends StatefulWidget {
       this.blackoutDates,
       this.controller,
       this.removePicker,
+      this.enablePreload,
       this.resourcePanelScrollController,
       this.resourceCollection,
       this.textScaleFactor,
@@ -78,6 +79,9 @@ class CustomCalendarScrollView extends StatefulWidget {
 
   /// Defines the locale of the calendar.
   final String locale;
+
+  /// Preloading data for the next pages with a small swipe
+  final bool enablePreload;
 
   /// Holds the theme data value for calendar.
   final SfCalendarThemeData calendarTheme;
@@ -3111,7 +3115,7 @@ class _CustomCalendarScrollViewState extends State<CustomCalendarScrollView>
     else if (!CalendarViewHelper.isCollectionEqual(
         appointmentLayout.visibleAppointments.value,
         _updateCalendarStateDetails.visibleAppointments)) {
-      if (widget.view != CalendarView.month &&
+      if (!widget.enablePreload && widget.view != CalendarView.month &&
           !CalendarViewHelper.isTimelineView(widget.view)) {
         view = _CalendarView(
           widget.calendar,
@@ -5017,7 +5021,7 @@ class _CustomCalendarScrollViewState extends State<CustomCalendarScrollView>
           
           // Update the visible dates based on swipe direction
           // This makes appointments visible during the swipe - but only once per swipe
-          if (!_nextPageDataPreloaded && _position.abs() > 0) {
+          if (widget.enablePreload && !_nextPageDataPreloaded && _position.abs() > 0) {
             final bool isNextView = _position < 0;
             _updateCurrentViewVisibleDates(isNextView: isNextView);
             _nextPageDataPreloaded = true;
