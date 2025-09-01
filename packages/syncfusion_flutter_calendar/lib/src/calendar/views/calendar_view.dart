@@ -496,6 +496,14 @@ class _CustomCalendarScrollViewState extends State<CustomCalendarScrollView>
       }
     }
 
+    if (
+      widget.view != CalendarView.month
+      && !_nextPageDataPreloaded
+      && (widget.hashCode != oldWidget.hashCode)
+    ) {
+      _forceUpdateAllDayEvents();
+    }
+
     super.didUpdateWidget(oldWidget);
   }
 
@@ -2582,6 +2590,19 @@ class _CustomCalendarScrollViewState extends State<CustomCalendarScrollView>
     }
   }
 
+  // Recompute all-day height on the active child view.
+  void _forceUpdateAllDayEvents() {
+    final _CalendarViewState? active = _getCurrentViewByVisibleDates();
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (active != null && mounted && widget.view != CalendarView.month) {
+        active.setState(() {
+          active.updateAllDayHeight(true);
+        });
+      }
+    });
+  }
+
   void _updateVisibleDates() {
     widget.getCalendarState(_updateCalendarStateDetails);
     final List<int>? nonWorkingDays = (widget.view == CalendarView.workWeek ||
@@ -3605,7 +3626,7 @@ class _CustomCalendarScrollViewState extends State<CustomCalendarScrollView>
       _tween.end = widget.width;
     }
 
-    _animationController.duration = const Duration(milliseconds: 250);
+    _animationController.duration = Duration(milliseconds: widget.calendar.enablePreload ? 0 : 250);
     _animationController
         .forward()
         .then<dynamic>((dynamic value) => _updatePreviousView());
@@ -5039,6 +5060,7 @@ class _CustomCalendarScrollViewState extends State<CustomCalendarScrollView>
           if (widget.enablePreload && !_nextPageDataPreloaded && _position.abs() > 0) {
             final bool isNextView = _position < 0;
             _updateCurrentViewVisibleDates(isNextView: isNextView);
+            _forceUpdateAllDayEvents();
             _nextPageDataPreloaded = true;
           }
 
@@ -5687,7 +5709,7 @@ class _CalendarViewState extends State<_CalendarView>
         widget.view != CalendarView.month) {
       _animationController = AnimationController(
           duration: const Duration(milliseconds: 200), vsync: this);
-      
+
       if (!widget.calendar.enablePreload)
         _heightAnimation =
             CurveTween(curve: Curves.easeIn).animate(_animationController!)
@@ -5699,7 +5721,7 @@ class _CalendarViewState extends State<_CalendarView>
           });
 
       _expanderAnimationController = AnimationController(
-          duration: const Duration(milliseconds: 100), vsync: this);
+          duration: Duration(milliseconds: widget.calendar.enablePreload ? 0 : 250), vsync: this);
       _allDayExpanderAnimation = CurveTween(curve: Curves.easeIn)
           .animate(_expanderAnimationController!)
         ..addListener(() {
@@ -5792,7 +5814,7 @@ class _CalendarViewState extends State<_CalendarView>
     final bool isCurrentView =
         _updateCalendarStateDetails.currentViewVisibleDates ==
             widget.visibleDates;
-    _updateAllDayHeight(isCurrentView);
+    updateAllDayHeight(isCurrentView);
 
     _timeIntervalHeight = _getTimeIntervalHeight(
         widget.calendar,
@@ -6047,7 +6069,7 @@ class _CalendarViewState extends State<_CalendarView>
       }
     }
 
-    _updateAllDayHeight(isCurrentView);
+    updateAllDayHeight(isCurrentView);
 
     final SystemMouseCursor currentCursor =
         _mouseCursor == SystemMouseCursors.resizeUp ||
@@ -6085,7 +6107,7 @@ class _CalendarViewState extends State<_CalendarView>
 
   /// Method to update alldayHeight calculation for day, week and work week
   /// view, based on the view also based on the timeintervalheight.
-  void _updateAllDayHeight(bool isCurrentView) {
+  void updateAllDayHeight(bool isCurrentView) {
     if (widget.view != CalendarView.day &&
         widget.view != CalendarView.week &&
         widget.view != CalendarView.workWeek) {
@@ -6120,7 +6142,7 @@ class _CalendarViewState extends State<_CalendarView>
           _updateCalendarStateDetails.allDayPanelHeight > _kAllDayLayoutHeight
               ? _kAllDayLayoutHeight
               : _updateCalendarStateDetails.allDayPanelHeight;
-      if (_heightAnimation != null)
+      if (!widget.calendar.enablePreload && _heightAnimation != null)
         _allDayHeight = _allDayHeight * _heightAnimation!.value;
     }
   }
@@ -6332,6 +6354,11 @@ class _CalendarViewState extends State<_CalendarView>
 
   void _expandOrCollapseAllDay() {
     _isExpanded = !_isExpanded;
+
+    if (widget.calendar.enablePreload && _expanderAnimationController != null) {
+      _expanderAnimationController!.value = 1.0;
+    }
+
     if (_isExpanded) {
       _expanderAnimationController!.forward();
     } else {
@@ -6395,7 +6422,7 @@ class _CalendarViewState extends State<_CalendarView>
           });
 
     _expanderAnimationController ??= AnimationController(
-        duration: const Duration(milliseconds: 100), vsync: this);
+        duration: Duration(milliseconds: widget.calendar.enablePreload ? 0 : 100), vsync: this);
     _allDayExpanderAnimation ??=
         CurveTween(curve: Curves.easeIn).animate(_expanderAnimationController!)
           ..addListener(() {
@@ -6530,29 +6557,31 @@ class _CalendarViewState extends State<_CalendarView>
       top: topPosition,
       right: 0,
       height: allDayExpanderHeight,
-      child: Stack(
-        children: <Widget>[
-          Positioned(
-            left: 0,
-            top: 0,
-            right: 0,
-            height: _isExpanded ? allDayExpanderHeight : _allDayHeight,
-            child: ListView(
-              physics: const NeverScrollableScrollPhysics(),
-              padding: EdgeInsets.zero,
-              children: <Widget>[
-                _getAllDayLayout(timeLabelWidth, panelHeight,
-                    allDayExpanderHeight, isCurrentView)
-              ],
-            ),
-          ),
-          Positioned(
+      child: RepaintBoundary(
+        child: Stack(
+          children: <Widget>[
+            Positioned(
               left: 0,
-              top: allDayExpanderHeight - 1,
+              top: 0,
               right: 0,
-              height: 1,
-              child: shadowView),
-        ],
+              height: _isExpanded ? allDayExpanderHeight : _allDayHeight,
+              child: ListView(
+                physics: const NeverScrollableScrollPhysics(),
+                padding: EdgeInsets.zero,
+                children: <Widget>[
+                  _getAllDayLayout(timeLabelWidth, panelHeight,
+                      allDayExpanderHeight, isCurrentView)
+                ],
+              ),
+            ),
+            Positioned(
+                left: 0,
+                top: allDayExpanderHeight - 1,
+                right: 0,
+                height: 1,
+                child: shadowView),
+          ],
+        ),
       ),
     );
   }
@@ -8597,13 +8626,15 @@ class _CalendarViewState extends State<_CalendarView>
                   controller: _scrollController,
                   physics: const ClampingScrollPhysics(),
                   children: <Widget>[
-                    Stack(children: <Widget>[
+                    Stack(key: const ValueKey<String>('day_view_stack'), children: <Widget>[
                       RepaintBoundary(
+                          key: const ValueKey<String>('multi_child_container'),
                           child: _CalendarMultiChildContainer(
                               width: width,
                               height: height,
                               children: <Widget>[
                             RepaintBoundary(
+                              key: const ValueKey<String>('time_slot_widget'),
                               child: TimeSlotWidget(
                                   widget.visibleDates,
                                   _horizontalLinesCount!,
@@ -8624,9 +8655,11 @@ class _CalendarViewState extends State<_CalendarView>
                                   widget.calendar.maxDate),
                             ),
                             RepaintBoundary(
+                                key: const ValueKey<String>('appointment_painter'),
                                 child: _addAppointmentPainter(width, height)),
                           ])),
                       RepaintBoundary(
+                        key: const ValueKey<String>('time_ruler'),
                         child: CustomPaint(
                           painter: _TimeRulerView(
                               _horizontalLinesCount!,
@@ -8643,6 +8676,7 @@ class _CalendarViewState extends State<_CalendarView>
                         ),
                       ),
                       RepaintBoundary(
+                        key: const ValueKey<String>('selection_view'),
                         child: CustomPaint(
                           painter: _addSelectionView(),
                           size: Size(width, height),
@@ -8661,26 +8695,28 @@ class _CalendarViewState extends State<_CalendarView>
       double timeLabelSize, double width, double height, bool isTimelineView) {
     if (!widget.calendar.showCurrentTimeIndicator ||
         widget.view == CalendarView.timelineMonth) {
-      return const SizedBox(
-        width: 0,
-        height: 0,
-      );
+      return const SizedBox.shrink();
     }
 
     return RepaintBoundary(
-      child: CustomPaint(
-        painter: _CurrentTimeIndicator(
-          _timeIntervalHeight,
-          timeLabelSize,
-          widget.calendar.timeSlotViewSettings,
-          isTimelineView,
-          widget.visibleDates,
-          widget.calendar.todayHighlightColor ??
-              widget.calendarTheme.todayHighlightColor,
-          _isRTL,
-          _currentTimeNotifier,
-        ),
-        size: Size(width, height),
+      child: ValueListenableBuilder<int>(
+        valueListenable: _currentTimeNotifier,
+        builder: (context, timeValue, _) {
+          return CustomPaint(
+            painter: _CurrentTimeIndicator(
+              _timeIntervalHeight,
+              timeLabelSize,
+              widget.calendar.timeSlotViewSettings,
+              isTimelineView,
+              widget.visibleDates,
+              widget.calendar.todayHighlightColor ??
+                  widget.calendarTheme.todayHighlightColor,
+              _isRTL,
+              _currentTimeNotifier,
+            ),
+            size: Size(width, height),
+          );
+        },
       ),
     );
   }
