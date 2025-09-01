@@ -5097,12 +5097,14 @@ class _CustomCalendarScrollViewState extends State<CustomCalendarScrollView>
       case ViewNavigationMode.none:
         return;
       case ViewNavigationMode.snap:
+        final double swipeThreshold = widget.enablePreload ? 0.0 : widget.width / 2;
+
         widget.removePicker();
         if (widget.calendar.monthViewSettings.navigationDirection ==
                 MonthNavigationDirection.horizontal ||
             widget.view != CalendarView.month) {
           // condition to check and update the right to left swiping
-          if (-_position >= widget.width / 2) {
+          if (-_position >= swipeThreshold) {
             _tween.begin = _position;
             _tween.end = -widget.width;
 
@@ -5157,7 +5159,7 @@ class _CustomCalendarScrollViewState extends State<CustomCalendarScrollView>
             _updateCurrentViewVisibleDates(isNextView: true);
           }
           // condition to check and update the left to right swiping
-          else if (_position >= widget.width / 2) {
+          else if (_position >= swipeThreshold) {
             _tween.begin = _position;
             _tween.end = widget.width;
 
