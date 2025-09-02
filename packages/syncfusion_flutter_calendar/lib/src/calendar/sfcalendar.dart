@@ -4439,6 +4439,10 @@ class _SfCalendarState extends State<SfCalendar>
 
     if (_isNeedLoadMore || _isScheduleStartLoadMore) {
       SchedulerBinding.instance.addPostFrameCallback((Duration timeStamp) {
+        if (!mounted) {
+          return;
+        }
+        
         setState(() {
           _isNeedLoadMore = false;
           _isScheduleStartLoadMore = false;
@@ -4753,9 +4757,11 @@ class _SfCalendarState extends State<SfCalendar>
     /// because time label view needs the top position.
     _updateAllDayAppointment();
     SchedulerBinding.instance.addPostFrameCallback((Duration timeStamp) {
-      setState(() {
-        /// Update the UI.
-      });
+      if (mounted) {
+        setState(() {
+          /// Update the UI.
+        });
+      }
     });
   }
 
