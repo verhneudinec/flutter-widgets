@@ -210,6 +210,12 @@ class _CustomCalendarScrollViewState extends State<CustomCalendarScrollView>
   // three views to arrange the view in vertical/horizontal direction and handle the swiping
   late _CalendarView _currentView, _nextView, _previousView;
 
+  // Variable to control enablePreload with delay
+  bool actualEnablePreload = false;
+
+  late AnimationController _appointmentAnimationController;
+  late Animation<double> _appointmentAnimation;
+
   // the three children which to be added into the layout
   final List<_CalendarView> _children = <_CalendarView>[];
 
@@ -278,6 +284,28 @@ class _CustomCalendarScrollViewState extends State<CustomCalendarScrollView>
 
   @override
   void initState() {
+    _appointmentAnimationController = AnimationController(
+      duration: const Duration(milliseconds: 100),
+      vsync: this,
+    );
+    _appointmentAnimation = CurvedAnimation(
+      parent: _appointmentAnimationController,
+      curve: Curves.easeIn,
+    );
+
+    if (widget.calendar.enablePreload) {
+      Future.delayed(const Duration(milliseconds: 150), () {
+        if (mounted) {
+          setState(() {
+            actualEnablePreload = widget.calendar.enablePreload;
+            _appointmentAnimationController.forward();
+          });
+        }
+      });
+    } else {
+      _appointmentAnimationController.forward();
+    }
+
     _dragDetails = ValueNotifier<_DragPaintDetails>(
         _DragPaintDetails(position: ValueNotifier<Offset?>(null)));
     widget.controller.forward = widget.isRTL
@@ -5237,7 +5265,7 @@ class _CustomCalendarScrollViewState extends State<CustomCalendarScrollView>
       double viewHeaderHeight,
       double timeLabelWidth,
       bool isNeedDragAndDrop) {
-    // Сбрасываем флаг при начале нового свайпа
+    // Reset the flag when a new swipe starts
     _nextPageDataPreloaded = false;
     final _CalendarViewState currentState = _getCurrentViewByVisibleDates()!;
     if (currentState._hoveringAppointmentView != null &&
@@ -5653,6 +5681,9 @@ class _CalendarViewState extends State<_CalendarView>
   Animation<double>? _timelineViewAnimation;
   final Tween<double> _timelineViewTween = Tween<double>(begin: 0.0, end: 0.1);
 
+  AnimationController? _appointmentAnimationController;
+  Animation<double>? _appointmentAnimation;
+
   //// timeline header is used to implement the sticky view header in horizontal calendar view mode.
   late TimelineViewHeaderView _timelineViewHeader;
   _SelectionPainter? _selectionPainter;
@@ -5764,6 +5795,14 @@ class _CalendarViewState extends State<_CalendarView>
     }
 
     final DateTime today = DateTime.now();
+    _appointmentAnimationController = AnimationController(
+        duration: const Duration(milliseconds: 175), vsync: this);
+    _appointmentAnimation = CurvedAnimation(
+        parent: _appointmentAnimationController!,
+        curve: Curves.easeInOut);
+
+    _appointmentAnimationController!.forward();
+
     _currentTimeNotifier = ValueNotifier<int>(
         (today.day * 24 * 60) + (today.hour * 60) + today.minute);
     _timer = _createTimer();
@@ -6015,6 +6054,27 @@ class _CalendarViewState extends State<_CalendarView>
   }
 
   Widget _getMonthView() {
+    final _CustomCalendarScrollViewState? scrollViewState =
+        context.findAncestorStateOfType<_CustomCalendarScrollViewState>();
+
+    final Widget calendarContent = _buildMonthViewContent();
+
+    if (scrollViewState == null) {
+      return calendarContent;
+    }
+
+    return AnimatedBuilder(
+      animation: scrollViewState._appointmentAnimation,
+      builder: (BuildContext context, Widget? child) {
+        return Opacity(
+          opacity: scrollViewState._appointmentAnimation.value,
+          child: calendarContent,
+        );
+      },
+    );
+  }
+
+  Widget _buildMonthViewContent() {
     final SystemMouseCursor currentCursor =
         _mouseCursor == SystemMouseCursors.resizeUp ||
                 _mouseCursor == SystemMouseCursors.resizeDown
@@ -6043,6 +6103,27 @@ class _CalendarViewState extends State<_CalendarView>
   }
 
   Widget _getDayView() {
+    final _CustomCalendarScrollViewState? scrollViewState =
+        context.findAncestorStateOfType<_CustomCalendarScrollViewState>();
+
+    final Widget calendarContent = _buildDayViewContent();
+
+    if (scrollViewState == null) {
+      return calendarContent;
+    }
+
+    return AnimatedBuilder(
+      animation: scrollViewState._appointmentAnimation,
+      builder: (BuildContext context, Widget? child) {
+        return Opacity(
+          opacity: scrollViewState._appointmentAnimation.value,
+          child: calendarContent,
+        );
+      },
+    );
+  }
+
+  Widget _buildDayViewContent() {
     final bool isCurrentView =
         _updateCalendarStateDetails.currentViewVisibleDates ==
             widget.visibleDates;
@@ -6150,6 +6231,27 @@ class _CalendarViewState extends State<_CalendarView>
   }
 
   Widget _getTimelineView() {
+    final _CustomCalendarScrollViewState? scrollViewState =
+        context.findAncestorStateOfType<_CustomCalendarScrollViewState>();
+
+    final Widget calendarContent = _buildTimelineViewContent();
+
+    if (scrollViewState == null) {
+      return calendarContent;
+    }
+
+    return AnimatedBuilder(
+      animation: scrollViewState._appointmentAnimation,
+      builder: (BuildContext context, Widget? child) {
+        return Opacity(
+          opacity: scrollViewState._appointmentAnimation.value,
+          child: calendarContent,
+        );
+      },
+    );
+  }
+
+  Widget _buildTimelineViewContent() {
     final SystemMouseCursor currentCursor =
         _mouseCursor == SystemMouseCursors.resizeUp ||
                 _mouseCursor == SystemMouseCursors.resizeDown
