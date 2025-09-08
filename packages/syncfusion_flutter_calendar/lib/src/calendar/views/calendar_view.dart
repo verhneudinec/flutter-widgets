@@ -3654,7 +3654,7 @@ class _CustomCalendarScrollViewState extends State<CustomCalendarScrollView>
       _tween.end = widget.width;
     }
 
-    _animationController.duration = Duration(milliseconds: widget.calendar.enablePreload ? 0 : 250);
+    _animationController.duration = Duration(milliseconds: 250);
     _animationController
         .forward()
         .then<dynamic>((dynamic value) => _updatePreviousView());
