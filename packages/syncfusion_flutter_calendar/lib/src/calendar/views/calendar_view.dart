@@ -8788,7 +8788,8 @@ class _CalendarViewState extends State<_CalendarView>
                       ),
                       _getCurrentTimeIndicator(
                           timeLabelWidth, width, height, false),
-                    ])
+                    ]),
+                    const SizedBox(height: 50),
                   ]),
             )),
       ],
