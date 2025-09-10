@@ -332,6 +332,7 @@ class _CustomCalendarScrollViewState extends State<CustomCalendarScrollView>
 
   @override
   void didUpdateWidget(CustomCalendarScrollView oldWidget) {
+    
     if (oldWidget.controller != widget.controller) {
       widget.controller.forward = widget.isRTL
           ? _moveToPreviousViewWithAnimation
@@ -3311,6 +3312,9 @@ class _CustomCalendarScrollViewState extends State<CustomCalendarScrollView>
   void animationListener() {
     setState(() {
       _position = _animation.value;
+      if (_animation.isCompleted && !_nextPageDataPreloaded) {
+        _nextPageDataPreloaded = true;
+      }
     });
   }
 
@@ -5085,11 +5089,10 @@ class _CustomCalendarScrollViewState extends State<CustomCalendarScrollView>
 
           // Update the visible dates based on swipe direction
           // This makes appointments visible during the swipe - but only once per swipe
-          if (widget.enablePreload && !_nextPageDataPreloaded && _position.abs() > 0) {
+          if (widget.enablePreload && _position.abs() > 0) {
             final bool isNextView = _position < 0;
             _updateCurrentViewVisibleDates(isNextView: isNextView);
             _forceUpdateAllDayEvents();
-            _nextPageDataPreloaded = true;
           }
 
           setState(() {
@@ -5815,6 +5818,7 @@ class _CalendarViewState extends State<_CalendarView>
     if (widget.view != CalendarView.month) {
       if (!isTimelineView) {
         _updateTimeSlotView(oldWidget);
+        
       }
 
       _updateHorizontalLineCount(oldWidget);
