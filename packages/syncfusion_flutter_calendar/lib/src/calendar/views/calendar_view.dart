@@ -6229,8 +6229,6 @@ class _CalendarViewState extends State<_CalendarView>
           _updateCalendarStateDetails.allDayPanelHeight > _kAllDayLayoutHeight
               ? _kAllDayLayoutHeight
               : _updateCalendarStateDetails.allDayPanelHeight;
-      if (!widget.calendar.enablePreload && _heightAnimation != null)
-        _allDayHeight = _allDayHeight * _heightAnimation!.value;
     }
   }
 
@@ -6711,7 +6709,7 @@ class _CalendarViewState extends State<_CalendarView>
             : null,
         timeLabelWidth,
         allDayExpanderHeight,
-        panelHeight > 0 && (_heightAnimation == null || _heightAnimation!.value == 1 || isDayView),
+        panelHeight > 0,
         _allDayExpanderAnimation!.value != 0.0 &&
             _allDayExpanderAnimation!.value != 1,
         _isRTL,
