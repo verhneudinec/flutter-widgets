@@ -311,13 +311,19 @@ class _AppointmentLayoutState extends State<AppointmentLayout> {
     for (int i = 0; i < _appointmentCollection.length; i++) {
       final AppointmentView appointmentView = _appointmentCollection[i];
       if (appointmentView.appointment != null &&
-          appointmentView.appointmentRect != null &&
-          appointmentView.appointmentRect!.left <= x &&
-          appointmentView.appointmentRect!.right >= x &&
-          appointmentView.appointmentRect!.top <= y &&
-          appointmentView.appointmentRect!.bottom >= y) {
-        selectedAppointmentView = appointmentView;
-        break;
+          appointmentView.appointmentRect != null) {
+
+        // Увеличиваем область касания для мобильных устройств
+        final double touchPadding = widget.isMobilePlatform ? 10.0 : 0.0;
+
+        if (appointmentView.appointmentRect!.left - touchPadding <= x &&
+            appointmentView.appointmentRect!.right + touchPadding >= x &&
+            appointmentView.appointmentRect!.top - touchPadding <= y &&
+            appointmentView.appointmentRect!.bottom + touchPadding >= y) {
+          print('![CALENDAR_LOG] Обнаружено касание встречи: $x, $y');
+          selectedAppointmentView = appointmentView;
+          break;
+        }
       }
     }
 

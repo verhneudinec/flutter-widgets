@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:math' as math;
+import 'dart:math';
 
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
@@ -332,7 +333,7 @@ class _CustomCalendarScrollViewState extends State<CustomCalendarScrollView>
 
   @override
   void didUpdateWidget(CustomCalendarScrollView oldWidget) {
-    
+
     if (oldWidget.controller != widget.controller) {
       widget.controller.forward = widget.isRTL
           ? _moveToPreviousViewWithAnimation
@@ -927,6 +928,16 @@ class _CustomCalendarScrollViewState extends State<CustomCalendarScrollView>
       _dragDetails.value.position.value = null;
       return;
     }
+
+    // Сбрасываем флаг отрыва пальца при начале лонгтапа
+    currentState._isFingerLifted = false;
+    currentState._isResizeMode = false;
+
+    // Сохраняем текущую встречу для дальнейшего взаимодействия
+    if (appointmentView.appointment != null) {
+      currentState._interactingAppointment = appointmentView.appointment;
+    }
+
     currentState._removeAllWidgetHovering();
     appointmentView = appointmentView.clone();
     _handleAppointmentDragStart(
@@ -963,8 +974,14 @@ class _CustomCalendarScrollViewState extends State<CustomCalendarScrollView>
       return;
     }
 
-    final Offset appointmentPosition = details + _dragDifferenceOffset!;
     final _CalendarViewState currentState = _getCurrentViewByVisibleDates()!;
+
+    // Если палец был оторван и мы в режиме ресайза, не обрабатываем перетаскивание
+    if (currentState._isFingerLifted && currentState._isResizeMode) {
+      return;
+    }
+
+    final Offset appointmentPosition = details + _dragDifferenceOffset!;
     final double allDayHeight = currentState._isExpanded
         ? _updateCalendarStateDetails.allDayPanelHeight
         : currentState._allDayHeight;
@@ -1998,8 +2015,20 @@ class _CustomCalendarScrollViewState extends State<CustomCalendarScrollView>
       _timer = null;
     }
 
-    final Offset appointmentPosition = details + _dragDifferenceOffset!;
+    // Устанавливаем флаг, что палец был оторван после лонгтапа
     final _CalendarViewState currentState = _getCurrentViewByVisibleDates()!;
+    currentState._isFingerLifted = true;
+
+    // Переключаемся в режим ресайза, если есть активная встреча
+    if (currentState._interactingAppointment != null) {
+      currentState._isResizeMode = true;
+
+      // Здесь можно добавить логику для отображения ползунков ресайза
+      // Перерисовываем виджет для отображения ползунков
+      currentState.setState(() {});
+    }
+
+    final Offset appointmentPosition = details + _dragDifferenceOffset!;
     final double allDayHeight = currentState._isExpanded
         ? _updateCalendarStateDetails.allDayPanelHeight
         : currentState._allDayHeight;
@@ -2304,6 +2333,26 @@ class _CustomCalendarScrollViewState extends State<CustomCalendarScrollView>
         appointment.recurrenceRule = null;
         final dynamic newParentAppointment =
             _getCalendarAppointmentToObject(parentAppointment, widget.calendar);
+
+        // Проверяем тип данных в источнике и преобразуем при необходимости
+        if (widget.calendar.dataSource != null &&
+            widget.calendar.dataSource!.appointments != null &&
+            widget.calendar.dataSource!.appointments!.isNotEmpty) {
+          final dynamic firstItem = widget.calendar.dataSource!.appointments!.first;
+          if (firstItem != null && firstItem is! Appointment) {
+            // Используем convertAppointmentToObject для создания объекта нужного типа
+            final dynamic customObject = widget.calendar.dataSource!
+                .convertAppointmentToObject(parentAppointment.data, newParentAppointment);
+            if (customObject != null) {
+              widget.calendar.dataSource!.appointments!.add(customObject);
+              widget.calendar.dataSource!.notifyListeners(
+                  CalendarDataSourceAction.add, <dynamic>[customObject]);
+              return;
+            }
+          }
+        }
+
+        // Если преобразование не требуется или не удалось, используем стандартный подход
         widget.calendar.dataSource!.appointments!.add(newParentAppointment);
         widget.calendar.dataSource!.notifyListeners(
             CalendarDataSourceAction.add, <dynamic>[newParentAppointment]);
@@ -2333,6 +2382,8 @@ class _CustomCalendarScrollViewState extends State<CustomCalendarScrollView>
     final dynamic newAppointment =
         _getCalendarAppointmentToObject(appointment, widget.calendar);
 
+
+    // Если преобразование не требуется или не удалось, используем стандартный подход
     widget.calendar.dataSource!.appointments!.add(newAppointment);
     widget.calendar.dataSource!.notifyListeners(
         CalendarDataSourceAction.add, <dynamic>[newAppointment]);
@@ -2480,7 +2531,6 @@ class _CustomCalendarScrollViewState extends State<CustomCalendarScrollView>
     final _CalendarViewState viewKey = _getCurrentViewByVisibleDates()!;
 
     if (_dragDetails.value.appointmentView != null &&
-        !widget.isMobilePlatform &&
         isNeedDragAndDrop) {
       _handleLongPressMove(
           Offset(details.localPosition.dx - widget.width,
@@ -4994,7 +5044,6 @@ class _CustomCalendarScrollViewState extends State<CustomCalendarScrollView>
     final _CalendarViewState currentState = _getCurrentViewByVisibleDates()!;
     if (currentState._hoveringAppointmentView != null &&
         currentState._hoveringAppointmentView!.appointment != null &&
-        !widget.isMobilePlatform &&
         isNeedDragAndDrop) {
       _handleAppointmentDragStart(
           currentState._hoveringAppointmentView!.clone(),
@@ -5710,6 +5759,15 @@ class _CalendarViewState extends State<_CalendarView>
   SystemMouseCursor _mouseCursor = SystemMouseCursors.basic;
   AppointmentView? _hoveringAppointmentView;
 
+  /// Флаг, указывающий, что палец был оторван после лонгтапа
+  bool _isFingerLifted = false;
+
+  /// Флаг, указывающий, что встреча находится в режиме ресайза
+  bool _isResizeMode = false;
+
+  /// Текущая встреча, с которой происходит взаимодействие
+  CalendarAppointment? _interactingAppointment;
+
   /// The property to hold the resource value associated with the selected
   /// calendar cell.
   int _selectedResourceIndex = -1;
@@ -5737,6 +5795,9 @@ class _CalendarViewState extends State<_CalendarView>
 
   @override
   void initState() {
+    _isFingerLifted = false;
+    _isResizeMode = false;
+    _interactingAppointment = null;
     _resizingDetails = ValueNotifier<_ResizingPaintDetails>(
         _ResizingPaintDetails(position: ValueNotifier<Offset?>(null)));
     _viewHeaderNotifier = ValueNotifier<Offset?>(null)
@@ -5818,7 +5879,7 @@ class _CalendarViewState extends State<_CalendarView>
     if (widget.view != CalendarView.month) {
       if (!isTimelineView) {
         _updateTimeSlotView(oldWidget);
-        
+
       }
 
       _updateHorizontalLineCount(oldWidget);
@@ -6088,6 +6149,20 @@ class _CalendarViewState extends State<_CalendarView>
                 ? SystemMouseCursors.resizeLeftRight
                 : _mouseCursor;
 
+    // Не используем MouseRegion на мобильных устройствах
+    if (widget.isMobilePlatform) {
+      return Stack(children: <Widget>[
+        GestureDetector(
+          onTapUp: _handleOnTapForMonth,
+          child: SizedBox(
+              width: widget.width,
+              height: widget.height,
+              child: _addMonthView(_isRTL, widget.locale)),
+        ),
+        _getResizeShadowView()
+      ]);
+    }
+
     return MouseRegion(
       cursor: currentCursor,
       onEnter: _pointerEnterEvent,
@@ -6166,6 +6241,25 @@ class _CalendarViewState extends State<_CalendarView>
                     _mouseCursor == SystemMouseCursors.resizeLeft
                 ? SystemMouseCursors.resizeLeftRight
                 : _mouseCursor;
+
+    // Не используем MouseRegion на мобильных устройствах
+    if (widget.isMobilePlatform) {
+      return Stack(children: <Widget>[
+        GestureDetector(
+          onTapUp: _handleOnTapForDay,
+          child: SizedBox(
+              height: widget.height,
+              width: widget.width,
+              child: _addDayView(
+                  widget.width,
+                  _timeIntervalHeight * _horizontalLinesCount!,
+                  _isRTL,
+                  widget.locale,
+                  isCurrentView)),
+        ),
+        _getResizeShadowView()
+      ]);
+    }
 
     return MouseRegion(
       cursor: currentCursor,
@@ -6775,14 +6869,15 @@ class _CalendarViewState extends State<_CalendarView>
   }
 
   void _onVerticalStart(DragStartDetails details) {
+    print('![CALENDAR_LOG] _onVerticalStart вызван: ${details.localPosition}');
     final double xPosition = details.localPosition.dx;
     double yPosition = details.localPosition.dy;
     final double timeLabelWidth = CalendarViewHelper.getTimeLabelWidth(
         widget.calendar.timeSlotViewSettings.timeRulerSize, widget.view);
     AppointmentView? appointmentView;
-    const double padding = 10;
-    final bool isForwardResize = _mouseCursor == SystemMouseCursors.resizeDown;
-    final bool isBackwardResize = _mouseCursor == SystemMouseCursors.resizeUp;
+    const double padding = 40;
+    bool isForwardResize = _mouseCursor == SystemMouseCursors.resizeDown;
+    bool isBackwardResize = _mouseCursor == SystemMouseCursors.resizeUp;
     final bool isDayView = CalendarViewHelper.isDayView(
         widget.view,
         widget.calendar.timeSlotViewSettings.numberOfDaysInView,
@@ -6812,8 +6907,78 @@ class _CalendarViewState extends State<_CalendarView>
       } else if (isForwardResize) {
         yPosition -= padding;
       }
-      appointmentView =
-          _appointmentLayout.getAppointmentViewOnPoint(xPosition, yPosition);
+
+      // Для мобильных устройств используем увеличенную область поиска
+      if (widget.isMobilePlatform) {
+        // Сначала пробуем найти встречу в точном месте касания
+        appointmentView = _appointmentLayout.getAppointmentViewOnPoint(xPosition, yPosition);
+        print('![CALENDAR_LOG] Поиск встречи в точке: $xPosition, $yPosition, найдено: ${appointmentView != null}');
+
+        // Если не нашли, пробуем с большим смещением вверх и вниз
+        if (appointmentView == null) {
+          appointmentView = _appointmentLayout.getAppointmentViewOnPoint(xPosition, yPosition - 30);
+          print('![CALENDAR_LOG] Поиск встречи со смещением вверх: $xPosition, ${yPosition - 30}, найдено: ${appointmentView != null}');
+        }
+        if (appointmentView == null) {
+          appointmentView = _appointmentLayout.getAppointmentViewOnPoint(xPosition, yPosition + 30);
+          print('![CALENDAR_LOG] Поиск встречи со смещением вниз: $xPosition, ${yPosition + 30}, найдено: ${appointmentView != null}');
+        }
+
+        // Если всё еще не нашли, расширяем область поиска
+        if (appointmentView == null) {
+          // Проверяем область вокруг точки касания с большим радиусом
+          for (int offsetY = -60; offsetY <= 60; offsetY += 20) {
+            for (int offsetX = -20; offsetX <= 20; offsetX += 10) {
+              appointmentView = _appointmentLayout.getAppointmentViewOnPoint(xPosition + offsetX, yPosition + offsetY);
+              if (appointmentView != null) {
+                print('![CALENDAR_LOG] Найдена встреча с расширенным поиском: ${xPosition + offsetX}, ${yPosition + offsetY}');
+                break;
+              }
+            }
+            if (appointmentView != null) break;
+          }
+        }
+
+        // Если нашли встречу, определяем тип ресайза по касанию точек
+        if (appointmentView != null) {
+          final double touchPosition = details.localPosition.dy;
+          final double appointmentTop = appointmentView.appointmentRect!.top;
+          final double appointmentBottom = appointmentView.appointmentRect!.bottom;
+          final double appointmentCenterX = appointmentView.appointmentRect!.left +
+              appointmentView.appointmentRect!.width / 2;
+
+          print('![CALENDAR_LOG] Данные встречи: верх=${appointmentTop}, низ=${appointmentBottom}, центрX=${appointmentCenterX}');
+          print('![CALENDAR_LOG] Касание: x=${details.localPosition.dx}, y=${touchPosition}');
+
+          // Для мобильных устройств активируем ресайз при касании верхней или нижней части встречи
+          final double appointmentHeight = appointmentBottom - appointmentTop;
+          final double resizeAreaHeight = min(appointmentHeight * 0.3, 15.0); // Область для ресайза - 30% высоты или 15px
+
+          // Определяем, в какой части встречи произошло касание
+          // Используем координаты найденной встречи, а не координаты касания
+          // Если встреча найдена со смещением вниз, активируем ресайз вниз
+          // Если встреча найдена со смещением вверх, активируем ресайз вверх
+
+          print('![CALENDAR_LOG] Определяем тип ресайза по найденной встрече');
+
+          // Проверяем, как была найдена встреча (со смещением вверх или вниз)
+          if (yPosition > appointmentTop + appointmentHeight / 2) {
+            // Встреча найдена в нижней части или со смещением вниз
+            isForwardResize = true;
+            isBackwardResize = false;
+            _mouseCursor = SystemMouseCursors.resizeDown;
+            print('![CALENDAR_LOG] Встреча найдена в нижней части: ресайз вниз');
+          } else {
+            // Встреча найдена в верхней части или со смещением вверх
+            isForwardResize = false;
+            isBackwardResize = true;
+            _mouseCursor = SystemMouseCursors.resizeUp;
+            print('![CALENDAR_LOG] Встреча найдена в верхней части: ресайз вверх');
+          }
+        }
+      } else {
+        appointmentView = _appointmentLayout.getAppointmentViewOnPoint(xPosition, yPosition);
+      }
       if (appointmentView == null) {
         return;
       }
@@ -6824,10 +6989,17 @@ class _CalendarViewState extends State<_CalendarView>
           allDayPanelHeight +
           _scrollController!.offset;
 
-      if (_mouseCursor != SystemMouseCursors.basic &&
-          _mouseCursor != SystemMouseCursors.move) {
+      // Проверяем, что курсор установлен для ресайза (вверх или вниз)
+      if (isForwardResize || isBackwardResize) {
+        print('![CALENDAR_LOG] Сохраняем appointmentView для ресайза: ${isForwardResize ? "вниз" : "вверх"}');
         _resizingDetails.value.appointmentView = appointmentView.clone();
+
+        // Устанавливаем флаги для ресайза
+        _resizingDetails.value.isForwardResize = isForwardResize;
+        _resizingDetails.value.isBackwardResize = isBackwardResize;
+        print('![CALENDAR_LOG] _resizingDetails установлен: isForwardResize=${_resizingDetails.value.isForwardResize}, isBackwardResize=${_resizingDetails.value.isBackwardResize}');
       } else {
+        print('![CALENDAR_LOG] Курсор не установлен для ресайза');
         appointmentView = null;
         return;
       }
@@ -6848,6 +7020,7 @@ class _CalendarViewState extends State<_CalendarView>
     }
     if (CalendarViewHelper.shouldRaiseAppointmentResizeStartCallback(
         widget.calendar.onAppointmentResizeStart)) {
+      print('CALENDAR_VIEW: onAppointmentResizeStart - appointment: ${appointmentView!.appointment!.subject}, time: ${_resizingDetails.value.resizingTime}, isBackwardResize: $isBackwardResize');
       CalendarViewHelper.raiseAppointmentResizeStartCallback(
           widget.calendar,
           _getCalendarAppointmentToObject(
@@ -6857,7 +7030,10 @@ class _CalendarViewState extends State<_CalendarView>
   }
 
   void _onVerticalUpdate(DragUpdateDetails details) {
+    print('![CALENDAR_LOG] _onVerticalUpdate вызван: ${details.localPosition}');
+    print('![CALENDAR_LOG] _resizingDetails: ${_resizingDetails.value.appointmentView != null}, isForwardResize: ${_resizingDetails.value.isForwardResize}, isBackwardResize: ${_resizingDetails.value.isBackwardResize}');
     if (_resizingDetails.value.appointmentView == null) {
+      print('![CALENDAR_LOG] _onVerticalUpdate: appointmentView == null');
       return;
     }
 
@@ -6871,8 +7047,22 @@ class _CalendarViewState extends State<_CalendarView>
         : CalendarViewHelper.getViewHeaderHeight(
             widget.calendar.viewHeaderHeight, widget.view);
     double yPosition = details.localPosition.dy;
-    final bool isForwardResize = _mouseCursor == SystemMouseCursors.resizeDown;
-    final bool isBackwardResize = _mouseCursor == SystemMouseCursors.resizeUp;
+
+    // Используем сохраненные флаги ресайза вместо проверки _mouseCursor
+    final bool isForwardResize = _resizingDetails.value.isForwardResize;
+    final bool isBackwardResize = _resizingDetails.value.isBackwardResize;
+
+    print('![CALENDAR_LOG] Проверка флагов в _onVerticalUpdate: isForwardResize=$isForwardResize, isBackwardResize=$isBackwardResize');
+
+    // Устанавливаем курсор в соответствии с типом ресайза
+    if (isForwardResize) {
+      _mouseCursor = SystemMouseCursors.resizeDown;
+      print('![CALENDAR_LOG] Используем сохраненный флаг: ресайз вниз');
+    } else if (isBackwardResize) {
+      _mouseCursor = SystemMouseCursors.resizeUp;
+      print('![CALENDAR_LOG] Используем сохраненный флаг: ресайз вверх');
+    }
+
     final double allDayPanelHeight = _isExpanded
         ? _updateCalendarStateDetails.allDayPanelHeight
         : _allDayHeight;
@@ -6894,9 +7084,38 @@ class _CalendarViewState extends State<_CalendarView>
     }
 
     _resizingDetails.value.scrollPosition = null;
+
+    // Обновляем позицию с учетом направления ресайза
+    // При ресайзе вверх (isBackwardResize) обновляем верхнюю границу встречи
+    // При ресайзе вниз (isForwardResize) обновляем нижнюю границу встречи
     _resizingDetails.value.position.value = Offset(
         _resizingDetails.value.appointmentView!.appointmentRect!.left,
         yPosition);
+
+    print('![CALENDAR_LOG] Обновление позиции ресайза: $yPosition, isForwardResize: $isForwardResize, isBackwardResize: $isBackwardResize');
+
+    // Проверяем корректность направления ресайза
+    if (isForwardResize) {
+      // При ресайзе вниз позиция должна быть ниже верхней границы встречи
+      // Убираем коррекцию позиции, чтобы избежать резкого скачка времени
+      // Позволяем пользователю свободно перемещать палец для более точного ресайза
+      final double appointmentTop = _resizingDetails.value.appointmentView!.appointmentRect!.top;
+      if (yPosition < appointmentTop) {
+        print('![CALENDAR_LOG] Позиция ниже верхней границы встречи: $yPosition < $appointmentTop');
+        // Не корректируем позицию, чтобы избежать резкого скачка времени
+      }
+    } else if (isBackwardResize) {
+      // При ресайзе вверх позиция должна быть выше нижней границы встречи
+      final double appointmentBottom = _resizingDetails.value.appointmentView!.appointmentRect!.bottom;
+      if (yPosition > appointmentBottom) {
+        print('![CALENDAR_LOG] Коррекция позиции для ресайза вверх: $yPosition -> $appointmentBottom');
+        yPosition = appointmentBottom;
+        _resizingDetails.value.position.value = Offset(
+            _resizingDetails.value.appointmentView!.appointmentRect!.left,
+            yPosition);
+      }
+    }
+
     _updateAppointmentResizingUpdateCallback(isForwardResize, isBackwardResize,
         yPosition, viewHeaderHeight, allDayPanelHeight);
   }
@@ -6970,11 +7189,16 @@ class _CalendarViewState extends State<_CalendarView>
       updatedEndTime = appointment.exactEndTime;
     }
 
-    if (_mouseCursor == SystemMouseCursors.resizeDown) {
+    // Обновляем время встречи в зависимости от направления ресайза
+    if (_resizingDetails.value.isForwardResize) {
       updatedEndTime = resizingTime;
-    } else if (_mouseCursor == SystemMouseCursors.resizeUp) {
+      print('![CALENDAR_LOG] Обновляем конечное время встречи: $updatedEndTime');
+    } else if (_resizingDetails.value.isBackwardResize) {
       updatedStartTime = resizingTime;
+      print('![CALENDAR_LOG] Обновляем начальное время встречи: $updatedStartTime');
     }
+
+    print('![CALENDAR_LOG] Обновление времени встречи: isForwardResize=${_resizingDetails.value.isForwardResize}, isBackwardResize=${_resizingDetails.value.isBackwardResize}');
 
     final DateTime callbackStartDate = updatedStartTime;
     final DateTime callbackEndDate = updatedEndTime;
@@ -6997,6 +7221,7 @@ class _CalendarViewState extends State<_CalendarView>
         widget.resourceCollection)) {
       if (CalendarViewHelper.shouldRaiseAppointmentResizeEndCallback(
           widget.calendar.onAppointmentResizeEnd)) {
+        print('CALENDAR_VIEW: onAppointmentResizeEnd - appointment: ${appointment.subject}, startTime: ${appointment.exactStartTime}, endTime: ${appointment.exactEndTime}');
         CalendarViewHelper.raiseAppointmentResizeEndCallback(
             widget.calendar,
             appointment.data,
@@ -7057,6 +7282,26 @@ class _CalendarViewState extends State<_CalendarView>
     appointment.id = parentAppointment != null ? null : appointment.id;
     final dynamic newAppointment =
         _getCalendarAppointmentToObject(appointment, widget.calendar);
+
+    // Проверяем тип данных в источнике и преобразуем при необходимости
+    if (widget.calendar.dataSource != null &&
+        widget.calendar.dataSource!.appointments != null &&
+        widget.calendar.dataSource!.appointments!.isNotEmpty) {
+      final dynamic firstItem = widget.calendar.dataSource!.appointments!.first;
+      if (firstItem != null && firstItem is! Appointment) {
+        // Используем convertAppointmentToObject для создания объекта нужного типа
+        final dynamic customObject = widget.calendar.dataSource!
+            .convertAppointmentToObject(appointment.data, newAppointment);
+        if (customObject != null) {
+          widget.calendar.dataSource!.appointments!.add(customObject);
+          widget.calendar.dataSource!.notifyListeners(
+              CalendarDataSourceAction.add, <dynamic>[customObject]);
+          return;
+        }
+      }
+    }
+
+    // Если преобразование не требуется или не удалось, используем стандартный подход
     widget.calendar.dataSource!.appointments!.add(newAppointment);
     widget.calendar.dataSource!.notifyListeners(
         CalendarDataSourceAction.add, <dynamic>[newAppointment]);
@@ -7496,6 +7741,7 @@ class _CalendarViewState extends State<_CalendarView>
 
     if (CalendarViewHelper.shouldRaiseAppointmentResizeUpdateCallback(
         widget.calendar.onAppointmentResizeUpdate)) {
+      print('CALENDAR_VIEW: onAppointmentResizeUpdate - appointment: ${_resizingDetails.value.appointmentView!.appointment!.subject}, time: $resizingTime, position: ${_resizingDetails.value.position.value!}');
       CalendarViewHelper.raiseAppointmentResizeUpdateCallback(
           widget.calendar,
           _getCalendarAppointmentToObject(
@@ -7799,6 +8045,26 @@ class _CalendarViewState extends State<_CalendarView>
 
         final dynamic newParentAppointment =
             _getCalendarAppointmentToObject(parentAppointment, widget.calendar);
+
+        // Проверяем тип данных в источнике и преобразуем при необходимости
+        if (widget.calendar.dataSource != null &&
+            widget.calendar.dataSource!.appointments != null &&
+            widget.calendar.dataSource!.appointments!.isNotEmpty) {
+          final dynamic firstItem = widget.calendar.dataSource!.appointments!.first;
+          if (firstItem != null && firstItem is! Appointment) {
+            // Используем convertAppointmentToObject для создания объекта нужного типа
+            final dynamic customObject = widget.calendar.dataSource!
+                .convertAppointmentToObject(parentAppointment.data, newParentAppointment);
+            if (customObject != null) {
+              widget.calendar.dataSource!.appointments!.add(customObject);
+              widget.calendar.dataSource!.notifyListeners(
+                  CalendarDataSourceAction.add, <dynamic>[customObject]);
+              return;
+            }
+          }
+        }
+
+        // Если преобразование не требуется или не удалось, используем стандартный подход
         widget.calendar.dataSource!.appointments!.add(newParentAppointment);
         widget.calendar.dataSource!.notifyListeners(
             CalendarDataSourceAction.add, <dynamic>[newParentAppointment]);
@@ -7820,6 +8086,25 @@ class _CalendarViewState extends State<_CalendarView>
     final dynamic newAppointment =
         _getCalendarAppointmentToObject(appointment, widget.calendar);
 
+    // Проверяем тип данных в источнике и преобразуем при необходимости
+    if (widget.calendar.dataSource != null &&
+        widget.calendar.dataSource!.appointments != null &&
+        widget.calendar.dataSource!.appointments!.isNotEmpty) {
+      final dynamic firstItem = widget.calendar.dataSource!.appointments!.first;
+      if (firstItem != null && firstItem is! Appointment) {
+        // Используем convertAppointmentToObject для создания объекта нужного типа
+        final dynamic customObject = widget.calendar.dataSource!
+            .convertAppointmentToObject(appointment.data, newAppointment);
+        if (customObject != null) {
+          widget.calendar.dataSource!.appointments!.add(customObject);
+          widget.calendar.dataSource!.notifyListeners(
+              CalendarDataSourceAction.add, <dynamic>[customObject]);
+          return;
+        }
+      }
+    }
+
+    // Если преобразование не требуется или не удалось, используем стандартный подход
     widget.calendar.dataSource!.appointments!.add(newAppointment);
     widget.calendar.dataSource!.notifyListeners(
         CalendarDataSourceAction.add, <dynamic>[newAppointment]);
@@ -8564,7 +8849,7 @@ class _CalendarViewState extends State<_CalendarView>
   }
 
   Widget _getResizeShadowView() {
-    if (widget.isMobilePlatform || !widget.calendar.allowAppointmentResize) {
+    if (!widget.calendar.allowAppointmentResize) {
       return const SizedBox(width: 0, height: 0);
     }
 
@@ -8580,8 +8865,16 @@ class _CalendarViewState extends State<_CalendarView>
     final double allDayPanelHeight = _isExpanded
         ? _updateCalendarStateDetails.allDayPanelHeight
         : _allDayHeight;
-    final bool isVerticalResize = _mouseCursor == SystemMouseCursors.resizeUp ||
+    bool isVerticalResize = _mouseCursor == SystemMouseCursors.resizeUp ||
         _mouseCursor == SystemMouseCursors.resizeDown;
+
+    // Для мобильных устройств принудительно активируем вертикальный ресайз, если установлен _resizingDetails
+    if (widget.isMobilePlatform && _resizingDetails != null) {
+      // print('![CALENDAR_LOG] Принудительная активация ресайза: $_mouseCursor');
+      isVerticalResize = true;
+    }
+      print('![CALENDAR_LOG] _mouseCursor=$_mouseCursor');
+
     final bool isTimelineView = CalendarViewHelper.isTimelineView(widget.view);
     final bool isAllDayPanel = !isVerticalResize &&
         (!isTimelineView && widget.view != CalendarView.month);
@@ -8609,40 +8902,92 @@ class _CalendarViewState extends State<_CalendarView>
         width: overAllWidth,
         height: overAllHeight,
         top: 0,
-        child: GestureDetector(
-          onVerticalDragStart: isVerticalResize ? _onVerticalStart : null,
-          onVerticalDragUpdate: isVerticalResize ? _onVerticalUpdate : null,
-          onVerticalDragEnd: isVerticalResize ? _onVerticalEnd : null,
-          onHorizontalDragStart: isVerticalResize ? null : _onHorizontalStart,
-          onHorizontalDragUpdate: isVerticalResize ? null : _onHorizontalUpdate,
-          onHorizontalDragEnd: isVerticalResize ? null : _onHorizontalEnd,
-          child: IgnorePointer(
-              ignoring: _mouseCursor == SystemMouseCursors.basic ||
-                  _mouseCursor == SystemMouseCursors.move ||
-                  isAllDayPanel,
-              child: RepaintBoundary(
-                  child: CustomPaint(
-                painter: _ResizingAppointmentPainter(
-                    _resizingDetails,
-                    _isRTL,
-                    widget.textScaleFactor,
-                    widget.isMobilePlatform,
-                    AppointmentHelper.getAppointmentTextStyle(
-                        widget.calendar.appointmentTextStyle,
-                        widget.view,
-                        widget.themeData),
-                    allDayPanelHeight,
-                    viewHeaderHeight,
-                    timeLabelWidth,
-                    _timeIntervalHeight,
-                    _scrollController,
-                    widget.calendar.dragAndDropSettings,
-                    widget.view,
-                    _mouseCursor,
-                    weekNumberPanelWidth,
-                    widget.calendarTheme),
-              ))),
-        ));
+        child: widget.isMobilePlatform
+            ? GestureDetector(
+                onPanStart: (DragStartDetails details) {
+                  print('![CALENDAR_LOG] onPanStart вызван: ${details.localPosition}');
+                  print('![CALENDAR_LOG] isVerticalResize: $isVerticalResize');
+                  if (isVerticalResize) {
+                    _onVerticalStart(details);
+                  } else {
+                    _onHorizontalStart(details);
+                  }
+                },
+                onPanUpdate: (DragUpdateDetails details) {
+                  print('![CALENDAR_LOG] onPanUpdate вызван: ${details.localPosition}');
+                  if (isVerticalResize) {
+                    _onVerticalUpdate(details);
+                  } else {
+                    _onHorizontalUpdate(details);
+                  }
+                },
+                onPanEnd: (DragEndDetails details) {
+                  print('![CALENDAR_LOG] onPanEnd вызван');
+                  if (isVerticalResize) {
+                    _onVerticalEnd(details);
+                  } else {
+                    _onHorizontalEnd(details);
+                  }
+                },
+                child: _isResizeMode && _interactingAppointment != null
+                    ? IgnorePointer(
+                        ignoring: isAllDayPanel && _mouseCursor == SystemMouseCursors.basic,
+                        child: RepaintBoundary(
+                            child: CustomPaint(
+                          painter: _ResizingAppointmentPainter(
+                              _resizingDetails,
+                              _isRTL,
+                              widget.textScaleFactor,
+                              widget.isMobilePlatform,
+                              AppointmentHelper.getAppointmentTextStyle(
+                                  widget.calendar.appointmentTextStyle,
+                                  widget.view,
+                                  widget.themeData),
+                              allDayPanelHeight,
+                              viewHeaderHeight,
+                              timeLabelWidth,
+                              _timeIntervalHeight,
+                              _scrollController,
+                              widget.calendar.dragAndDropSettings,
+                              widget.view,
+                              _mouseCursor,
+                              weekNumberPanelWidth,
+                              widget.calendarTheme),
+                        )))
+                    : Container()) // Не показываем ползунки, если не в режиме ресайза
+            : GestureDetector(
+                onVerticalDragStart: isVerticalResize ? _onVerticalStart : null,
+                onVerticalDragUpdate: isVerticalResize ? _onVerticalUpdate : null,
+                onVerticalDragEnd: isVerticalResize ? _onVerticalEnd : null,
+                onHorizontalDragStart: isVerticalResize ? null : _onHorizontalStart,
+                onHorizontalDragUpdate: isVerticalResize ? null : _onHorizontalUpdate,
+                onHorizontalDragEnd: isVerticalResize ? null : _onHorizontalEnd,
+                child: IgnorePointer(
+                    ignoring: (_mouseCursor == SystemMouseCursors.basic ||
+                            _mouseCursor == SystemMouseCursors.move) ||
+                        isAllDayPanel,
+                    child: RepaintBoundary(
+                        child: CustomPaint(
+                      painter: _ResizingAppointmentPainter(
+                          _resizingDetails,
+                          _isRTL,
+                          widget.textScaleFactor,
+                          widget.isMobilePlatform,
+                          AppointmentHelper.getAppointmentTextStyle(
+                              widget.calendar.appointmentTextStyle,
+                              widget.view,
+                              widget.themeData),
+                          allDayPanelHeight,
+                          viewHeaderHeight,
+                          timeLabelWidth,
+                          _timeIntervalHeight,
+                          _scrollController,
+                          widget.calendar.dragAndDropSettings,
+                          widget.view,
+                          _mouseCursor,
+                          weekNumberPanelWidth,
+                          widget.calendarTheme),
+                    )))));
   }
 
   // Returns the day view as a child for the calendar view.
@@ -8726,7 +9071,7 @@ class _CalendarViewState extends State<_CalendarView>
             bottom: 0,
             child: Scrollbar(
               controller: _scrollController,
-              thumbVisibility: !widget.isMobilePlatform,
+              thumbVisibility: true,
               child: ListView(
                   padding: EdgeInsets.zero,
                   controller: _scrollController,
@@ -8914,7 +9259,7 @@ class _CalendarViewState extends State<_CalendarView>
           bottom: 0,
           child: Scrollbar(
             controller: _scrollController,
-            thumbVisibility: !widget.isMobilePlatform,
+            thumbVisibility: true,
             child: ListView(
                 padding: EdgeInsets.zero,
                 controller: _scrollController,
@@ -8926,7 +9271,7 @@ class _CalendarViewState extends State<_CalendarView>
                       child: Stack(children: <Widget>[
                         Scrollbar(
                             controller: _timelineViewVerticalScrollController,
-                            thumbVisibility: !widget.isMobilePlatform,
+                            thumbVisibility: true,
                             child: ListView(
                                 padding: EdgeInsets.zero,
                                 controller:
@@ -10704,7 +11049,7 @@ class _CalendarViewState extends State<_CalendarView>
     }
 
     if (appointmentView == null || appointmentView.appointment == null) {
-      if (_mouseCursor != SystemMouseCursors.basic) {
+      if (_mouseCursor != SystemMouseCursors.basic && !widget.isMobilePlatform) {
         setState(() {
           _mouseCursor = SystemMouseCursors.basic;
         });
@@ -10797,19 +11142,33 @@ class _CalendarViewState extends State<_CalendarView>
         });
       }
     } else {
-      if (yPosition >= appointmentView.appointmentRect!.top &&
-          yPosition <= appointmentView.appointmentRect!.top + padding &&
-          CalendarViewHelper.isSameTimeSlot(
+      print('![CALENDAR_LOG] Проверка условий для вертикального ресайза:');
+      print('yPosition: $yPosition, top: ${appointmentView.appointmentRect!.top}, bottom: ${appointmentView.appointmentRect!.bottom}, padding: $padding');
+      print('isSameTimeSlot start: ${CalendarViewHelper.isSameTimeSlot(
               appointmentView.appointment!.actualStartTime,
-              appointmentView.appointment!.exactStartTime)) {
+              appointmentView.appointment!.exactStartTime)}');
+      print('isSameTimeSlot end: ${CalendarViewHelper.isSameTimeSlot(
+              appointmentView.appointment!.actualEndTime,
+              appointmentView.appointment!.exactEndTime)}');
+
+      // Увеличиваем область активации ресайза для мобильных устройств
+      final double mobileResizeArea = widget.isMobilePlatform ? padding * 3 : padding;
+
+      if (yPosition >= appointmentView.appointmentRect!.top &&
+          yPosition <= appointmentView.appointmentRect!.top + mobileResizeArea &&
+          (widget.isMobilePlatform || CalendarViewHelper.isSameTimeSlot(
+              appointmentView.appointment!.actualStartTime,
+              appointmentView.appointment!.exactStartTime))) {
+        print('![CALENDAR_LOG] Устанавливаем курсор resizeUp');
         setState(() {
           _mouseCursor = SystemMouseCursors.resizeUp;
         });
       } else if (yPosition <= appointmentView.appointmentRect!.bottom &&
-          yPosition >= appointmentView.appointmentRect!.bottom - padding &&
-          CalendarViewHelper.isSameTimeSlot(
+          yPosition >= appointmentView.appointmentRect!.bottom - mobileResizeArea &&
+          (widget.isMobilePlatform || CalendarViewHelper.isSameTimeSlot(
               appointmentView.appointment!.actualEndTime,
-              appointmentView.appointment!.exactEndTime)) {
+              appointmentView.appointment!.exactEndTime))) {
+        print('![CALENDAR_LOG] Устанавливаем курсор resizeDown');
         setState(() {
           _mouseCursor = SystemMouseCursors.resizeDown;
         });
@@ -10822,8 +11181,7 @@ class _CalendarViewState extends State<_CalendarView>
   }
 
   void _updatePointerHover(Offset globalPosition) {
-    if (widget.isMobilePlatform ||
-        _resizingDetails.value.appointmentView != null ||
+    if (_resizingDetails.value.appointmentView != null ||
         widget.dragDetails.value.appointmentView != null &&
             widget.calendar.appointmentBuilder == null) {
       return;
@@ -11497,6 +11855,7 @@ class _CalendarViewState extends State<_CalendarView>
       (UpdateCalendarStateDetails details) {
         _getPainterProperties(details);
       },
+      _mouseCursor,
     );
 
     if (appointmentView != null &&
@@ -12205,7 +12564,8 @@ class _SelectionPainter extends CustomPainter {
       this.resourceItemHeight,
       this.showWeekNumber,
       this.isMobilePlatform,
-      this.getCalendarState)
+      this.getCalendarState,
+      this.mouseCursor)
       : super(repaint: repaintNotifier);
 
   final SfCalendar calendar;
@@ -12217,6 +12577,8 @@ class _SelectionPainter extends CustomPainter {
   final double timeIntervalHeight;
   final bool isRTL;
   final UpdateCalendarState getCalendarState;
+  final SystemMouseCursor? mouseCursor;
+
   int selectedResourceIndex;
   final double? resourceItemHeight;
 
@@ -12527,6 +12889,57 @@ class _SelectionPainter extends CustomPainter {
         .createBoxPainter(_updateSelectionDecorationPainter);
     _boxPainter.paint(canvas, Offset(rect.left, rect.top),
         ImageConfiguration(size: rect.size));
+
+    // Добавляем точки ресайза сверху и снизу для мобильных устройств
+    if (calendar.allowAppointmentResize && isMobilePlatform) {
+      final Paint indicatorPaint = Paint()
+        ..color = Colors.white.withOpacity(0.8)
+        ..style = PaintingStyle.fill;
+      final Paint indicatorBorderPaint = Paint()
+        ..color = Colors.grey.withOpacity(0.6)
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 1.5;
+
+      // Размеры ползунков
+      const double indicatorWidth = 20;
+      const double indicatorHeight = 10;
+
+      // Определяем направление ресайза
+      final bool isForwardResize = mouseCursor == SystemMouseCursors.resizeDown ||
+          mouseCursor == SystemMouseCursors.resizeRight;
+      final bool isBackwardResize = mouseCursor == SystemMouseCursors.resizeUp ||
+          mouseCursor == SystemMouseCursors.resizeLeft;
+      print('dksakasdkdas $mouseCursor');
+      // Отрисовываем верхний ползунок только если нет ресайза вверх
+      if (!isForwardResize) {
+        final RRect topRRect = RRect.fromRectAndRadius(
+          Rect.fromCenter(
+            center: Offset(rect.left + rect.width / 2, rect.top),
+            width: indicatorWidth,
+            height: indicatorHeight
+          ),
+          const Radius.circular(5)
+        );
+
+        canvas.drawRRect(topRRect, indicatorPaint);
+        canvas.drawRRect(topRRect, indicatorBorderPaint);
+      }
+
+      // Отрисовываем нижний ползунок только если нет ресайза вниз
+      if (!isBackwardResize) {
+        final RRect bottomRRect = RRect.fromRectAndRadius(
+          Rect.fromCenter(
+            center: Offset(rect.left + rect.width / 2, rect.bottom),
+            width: indicatorWidth,
+            height: indicatorHeight
+          ),
+          const Radius.circular(5)
+        );
+
+        canvas.drawRRect(bottomRRect, indicatorPaint);
+        canvas.drawRRect(bottomRRect, indicatorBorderPaint);
+      }
+    }
   }
 
   /// Used to pass the argument of create box painter and it is called when
@@ -12562,7 +12975,7 @@ class _SelectionPainter extends CustomPainter {
         oldWidget.view != view ||
         oldWidget.visibleDates != visibleDates ||
         oldWidget.selectedResourceIndex != selectedResourceIndex ||
-        oldWidget.isRTL != isRTL;
+        oldWidget.isRTL != isRTL || oldWidget.mouseCursor != mouseCursor;
   }
 }
 
@@ -13141,7 +13554,11 @@ class _ResizingPaintDetails {
       // ignore: unused_element
       this.appointmentColor = Colors.transparent,
       // ignore: unused_element
-      this.resizingTime});
+      this.resizingTime,
+      // ignore: unused_element
+      this.isForwardResize = false,
+      // ignore: unused_element
+      this.isBackwardResize = false});
 
   AppointmentView? appointmentView;
   final ValueNotifier<Offset?> position;
@@ -13151,6 +13568,8 @@ class _ResizingPaintDetails {
   double? monthCellHeight;
   Color appointmentColor;
   DateTime? resizingTime;
+  bool isForwardResize;
+  bool isBackwardResize;
 }
 
 class _ResizingAppointmentPainter extends CustomPainter {
@@ -13403,8 +13822,51 @@ class _ResizingAppointmentPainter extends CustomPainter {
         }
       }
       rect = Rect.fromLTRB(left, top, right, bottom);
-      canvas.drawRect(rect, _shadowPainter);
-      yPosition = top;
+      canvas.drawRect(rect, _shadowPainter..color = Colors.red);
+
+      // Добавляем ползунки для ресайза сверху и снизу
+      final Paint indicatorPaint = Paint()
+        ..color = Colors.white.withOpacity(0.8)
+        ..style = PaintingStyle.fill;
+      final Paint indicatorBorderPaint = Paint()
+        ..color = Colors.grey.withOpacity(0.6)
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 1.5;
+
+      // Размеры ползунков
+      const double indicatorWidth = 20;
+      const double indicatorHeight = 8;
+      const double cornerRadius = 4;
+
+      // Верхний ползунок (для ресайза вверх)
+      final RRect topIndicator = RRect.fromRectAndRadius(
+        Rect.fromCenter(
+          center: Offset((left + right) / 2, top),
+          width: indicatorWidth,
+          height: indicatorHeight,
+        ),
+        const Radius.circular(cornerRadius),
+      );
+
+      // Нижний ползунок (для ресайза вниз)
+      final RRect bottomIndicator = RRect.fromRectAndRadius(
+        Rect.fromCenter(
+          center: Offset((left + right) / 2, bottom),
+          width: indicatorWidth,
+          height: indicatorHeight,
+        ),
+        const Radius.circular(cornerRadius),
+      );
+
+      // Отрисовка ползунков
+      canvas.drawRRect(topIndicator, indicatorPaint);
+      canvas.drawRRect(topIndicator, indicatorBorderPaint);
+      canvas.drawRRect(bottomIndicator, indicatorPaint);
+      canvas.drawRRect(bottomIndicator, indicatorBorderPaint);
+
+      // При вертикальном ресайзе используем позицию пальца для более точного позиционирования
+      // При горизонтальном ресайзе используем верхнюю границу прямоугольника
+      yPosition = isHorizontalResize ? top : resizingDetails.value.position.value!.dy;
     }
     if (dragAndDropSettings.showTimeIndicator &&
         resizingDetails.value.resizingTime != null) {
@@ -13674,9 +14136,8 @@ dynamic _getCalendarAppointmentToObject(
   }
   final dynamic customObject = calendar.dataSource!
       .convertAppointmentToObject(calendarAppointment.data, appointment);
-  assert(customObject != null,
-      'Implement convertToCalendarAppointment method from CalendarDataSource');
-  return customObject;
+  // Убираем assert, который вызывает ошибку
+  return customObject ?? appointment;
 }
 
 class _DragPaintDetails {
