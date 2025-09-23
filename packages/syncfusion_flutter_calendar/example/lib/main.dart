@@ -34,7 +34,7 @@ class _MyHomePageState extends State<MyHomePage> {
   void initState() {
     super.initState();
     _calendarController = CalendarController();
-    _calendarController.view = CalendarView.week;
+    _calendarController.view = CalendarView.day;
   }
 
   @override
@@ -66,15 +66,71 @@ class _MyHomePageState extends State<MyHomePage> {
             Container(
               height: 700,
               child: SfCalendar(
+                allowAppointmentResize: true,
+                allowDragAndDrop: true,
                 enablePreload: true,
-                    controller: _calendarController,
-                    dataSource: MeetingDataSource(_getDataSource()),
-                    // by default the month appointment display mode set as Indicator, we can
-                    // change the display mode as appointment using the appointment display
-                    // mode property
-                    monthViewSettings: const MonthViewSettings(
-                appointmentDisplayMode: MonthAppointmentDisplayMode.appointment),
-                  ),
+                onTap: (calendarTapDetails) {
+                  Navigator.of(context).push(MaterialPageRoute(
+                    builder: (context) => Scaffold( 
+                      appBar: AppBar(
+                        title: Text('Test'),
+                      ),
+                      body: Center(child: Text('${(calendarTapDetails?.appointments?.firstOrNull as Appointment)?.subject}')),
+                    ),
+                  ));
+                },
+                onDragStart: (AppointmentDragStartDetails details) {
+                  ScaffoldMessenger.of(context).removeCurrentSnackBar();
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text('Начало перемещения: {details.appointment!.subject}'),
+                      duration: const Duration(seconds: 1),
+                    ),
+                  );
+                },
+                onDragUpdate: (AppointmentDragUpdateDetails details) {
+                  // Обработка обновления при перетаскивании
+                },
+                onDragEnd: (AppointmentDragEndDetails details) {
+                  ScaffoldMessenger.of(context).removeCurrentSnackBar();
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text('Событие перемещено: {details.appointment!.subject}'),
+                      duration: const Duration(seconds: 2),
+                    ),
+                  );
+                },
+                onAppointmentResizeStart: (AppointmentResizeStartDetails details) {
+                  ScaffoldMessenger.of(context).removeCurrentSnackBar();
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text('Начало изменения размера: ${details.appointment!.subject}'),
+                      duration: const Duration(seconds: 1),
+                    ),
+                  );
+                },
+                onAppointmentResizeUpdate: (AppointmentResizeUpdateDetails details) {
+                  print('RESIZE_UPDATE: ${details.appointment!.subject}, новое время: ${details.resizingTime}, смещение: ${details}');
+                  // Обработка обновления при изменении размера
+                },
+                onAppointmentResizeEnd: (AppointmentResizeEndDetails details) {
+                  print('RESIZE_END: ${details.appointment!.subject}, итоговое время: ${details.startTime} - ${details.endTime}');
+                  ScaffoldMessenger.of(context).removeCurrentSnackBar();
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text('Размер изменен: ${details.appointment!.subject}'),
+                      duration: const Duration(seconds: 2),
+                    ),
+                  );
+                },
+                controller: _calendarController,
+                dataSource: MeetingDataSource(_getDataSource()),
+                // by default the month appointment display mode set as Indicator, we can
+                // change the display mode as appointment using the appointment display
+                // mode property
+                monthViewSettings: const MonthViewSettings(
+                  appointmentDisplayMode: MonthAppointmentDisplayMode.appointment),
+                ),
             ),
           ],
         ));
@@ -95,27 +151,48 @@ class _MyHomePageState extends State<MyHomePage> {
     );
   }
 
-  List<Meeting> _getDataSource() {
-    final List<Meeting> meetings = <Meeting>[];
+  List<Appointment> _getDataSource() {
+    final List<Appointment> meetings = <Appointment>[];
     final DateTime today = DateTime.now();
     final DateTime startTime = DateTime(today.year, today.month, today.day, 9);
     final DateTime endTime = startTime.add(const Duration(hours: 2));
 
 
   for (int i = 0; i < 10; i++)
-   meetings.add(Meeting(  
-    '${startTime.day}.${startTime.month}', startTime.copyWith(hour: 13, minute: i), endTime.copyWith(hour: 15,), const Color(0xFF0F8644), true));
+    // Add appointments for the first 10 minutes of the day
+    for (int i = 0; i < 10; i++) {
+      meetings.add(Appointment(
+        subject: '${startTime.day}.${startTime.month}',
+        startTime:  startTime.copyWith(hour: 13, minute: i),
+        endTime: endTime.copyWith(hour: 15),
+        color: const Color(0xFF0F8644),
+        isAllDay: true,
+      ));
+    }
 
+    // Add appointments for the next 120 days
+    final startDate = DateTime(2025, 7, 5); // Fixed month format from 07 to 7
+    for (int i = 0; i < 120; i++) {
+      final appointmentStart = startDate.add(Duration(days: i));
+      final appointmentEnd = appointmentStart.add(const Duration(hours: 2));
+      
+      // Add full-day appointment
+      meetings.add(Appointment(
+        subject: '${appointmentStart.day}.${appointmentStart.month}',
+        startTime: appointmentStart,
+        endTime: appointmentEnd,
+        color: const Color(0xFF0F8644),
+        isAllDay: true,
+      ));
 
-        for (int i = 0; i <  120; i++) {
-          final date = DateTime(2025, 07, 05);
-          final startTime = date.add(Duration( days: i));
-          final endTime = startTime.add(Duration(hours: 2));
-          meetings.add(Meeting(' ${startTime.day}.${startTime.month}', startTime, endTime, const Color(0xFF0F8644), true));
-
-           meetings.add(Meeting(
-    '${startTime.day}.${startTime.month}', startTime.copyWith(hour: 13), endTime.copyWith(hour: 15), const Color(0xFF0F8644), false));
-
+      // Add specific time appointment
+      meetings.add(Appointment(
+        subject:  '${appointmentStart.day}.${appointmentStart.month}',
+        startTime: appointmentStart.copyWith(hour: 13),
+        endTime: appointmentEnd.copyWith(hour: 15),
+        color: const Color(0xFF0F8644),
+        isAllDay: false,
+      ));
         }
     return meetings;
   }
@@ -127,7 +204,7 @@ class _MyHomePageState extends State<MyHomePage> {
 class MeetingDataSource extends CalendarDataSource {
   /// Creates a meeting data source, which used to set the appointment
   /// collection to the calendar
-  MeetingDataSource(List<Meeting> source) {
+  MeetingDataSource(List<Appointment> source) {
     appointments = source;
   }
 
