@@ -320,7 +320,7 @@ class _AppointmentLayoutState extends State<AppointmentLayout> {
             appointmentView.appointmentRect!.right + touchPadding >= x &&
             appointmentView.appointmentRect!.top - touchPadding <= y &&
             appointmentView.appointmentRect!.bottom + touchPadding >= y) {
-          print('![CALENDAR_LOG] Обнаружено касание встречи: $x, $y');
+
           selectedAppointmentView = appointmentView;
           break;
         }

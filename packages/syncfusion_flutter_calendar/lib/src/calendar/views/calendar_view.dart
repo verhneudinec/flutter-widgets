@@ -6876,7 +6876,7 @@ class _CalendarViewState extends State<_CalendarView>
   }
 
   void _onVerticalStart(DragStartDetails details) {
-    print('![CALENDAR_LOG] _onVerticalStart вызван: ${details.localPosition}');
+
     final double xPosition = details.localPosition.dx;
     double yPosition = details.localPosition.dy;
     final double timeLabelWidth = CalendarViewHelper.getTimeLabelWidth(
@@ -6919,16 +6919,16 @@ class _CalendarViewState extends State<_CalendarView>
       if (widget.isMobilePlatform) {
         // Сначала пробуем найти встречу в точном месте касания
         appointmentView = _appointmentLayout.getAppointmentViewOnPoint(xPosition, yPosition);
-        print('![CALENDAR_LOG] Поиск встречи в точке: $xPosition, $yPosition, найдено: ${appointmentView != null}');
+    
 
         // Если не нашли, пробуем с большим смещением вверх и вниз
         if (appointmentView == null) {
           appointmentView = _appointmentLayout.getAppointmentViewOnPoint(xPosition, yPosition - 30);
-          print('![CALENDAR_LOG] Поиск встречи со смещением вверх: $xPosition, ${yPosition - 30}, найдено: ${appointmentView != null}');
+      
         }
         if (appointmentView == null) {
           appointmentView = _appointmentLayout.getAppointmentViewOnPoint(xPosition, yPosition + 30);
-          print('![CALENDAR_LOG] Поиск встречи со смещением вниз: $xPosition, ${yPosition + 30}, найдено: ${appointmentView != null}');
+
         }
 
         // Если всё еще не нашли, расширяем область поиска
@@ -6938,7 +6938,6 @@ class _CalendarViewState extends State<_CalendarView>
             for (int offsetX = -20; offsetX <= 20; offsetX += 10) {
               appointmentView = _appointmentLayout.getAppointmentViewOnPoint(xPosition + offsetX, yPosition + offsetY);
               if (appointmentView != null) {
-                print('![CALENDAR_LOG] Найдена встреча с расширенным поиском: ${xPosition + offsetX}, ${yPosition + offsetY}');
                 break;
               }
             }
@@ -6954,9 +6953,6 @@ class _CalendarViewState extends State<_CalendarView>
           final double appointmentCenterX = appointmentView.appointmentRect!.left +
               appointmentView.appointmentRect!.width / 2;
 
-          print('![CALENDAR_LOG] Данные встречи: верх=${appointmentTop}, низ=${appointmentBottom}, центрX=${appointmentCenterX}');
-          print('![CALENDAR_LOG] Касание: x=${details.localPosition.dx}, y=${touchPosition}');
-
           // Для мобильных устройств активируем ресайз при касании верхней или нижней части встречи
           final double appointmentHeight = appointmentBottom - appointmentTop;
           final double resizeAreaHeight = min(appointmentHeight * 0.3, 15.0); // Область для ресайза - 30% высоты или 15px
@@ -6966,21 +6962,17 @@ class _CalendarViewState extends State<_CalendarView>
           // Если встреча найдена со смещением вниз, активируем ресайз вниз
           // Если встреча найдена со смещением вверх, активируем ресайз вверх
 
-          print('![CALENDAR_LOG] Определяем тип ресайза по найденной встрече');
-
           // Проверяем, как была найдена встреча (со смещением вверх или вниз)
           if (yPosition > appointmentTop + appointmentHeight / 2) {
             // Встреча найдена в нижней части или со смещением вниз
             isForwardResize = true;
             isBackwardResize = false;
             _mouseCursor = SystemMouseCursors.resizeDown;
-            print('![CALENDAR_LOG] Встреча найдена в нижней части: ресайз вниз');
           } else {
             // Встреча найдена в верхней части или со смещением вверх
             isForwardResize = false;
             isBackwardResize = true;
             _mouseCursor = SystemMouseCursors.resizeUp;
-            print('![CALENDAR_LOG] Встреча найдена в верхней части: ресайз вверх');
           }
         }
       } else {
@@ -6998,15 +6990,12 @@ class _CalendarViewState extends State<_CalendarView>
 
       // Проверяем, что курсор установлен для ресайза (вверх или вниз)
       if (isForwardResize || isBackwardResize) {
-        print('![CALENDAR_LOG] Сохраняем appointmentView для ресайза: ${isForwardResize ? "вниз" : "вверх"}');
         _resizingDetails.value.appointmentView = appointmentView.clone();
 
         // Устанавливаем флаги для ресайза
         _resizingDetails.value.isForwardResize = isForwardResize;
         _resizingDetails.value.isBackwardResize = isBackwardResize;
-        print('![CALENDAR_LOG] _resizingDetails установлен: isForwardResize=${_resizingDetails.value.isForwardResize}, isBackwardResize=${_resizingDetails.value.isBackwardResize}');
       } else {
-        print('![CALENDAR_LOG] Курсор не установлен для ресайза');
         appointmentView = null;
         return;
       }
@@ -7027,7 +7016,6 @@ class _CalendarViewState extends State<_CalendarView>
     }
     if (CalendarViewHelper.shouldRaiseAppointmentResizeStartCallback(
         widget.calendar.onAppointmentResizeStart)) {
-      print('CALENDAR_VIEW: onAppointmentResizeStart - appointment: ${appointmentView!.appointment!.subject}, time: ${_resizingDetails.value.resizingTime}, isBackwardResize: $isBackwardResize');
       CalendarViewHelper.raiseAppointmentResizeStartCallback(
           widget.calendar,
           _getCalendarAppointmentToObject(
@@ -7037,10 +7025,7 @@ class _CalendarViewState extends State<_CalendarView>
   }
 
   void _onVerticalUpdate(DragUpdateDetails details) {
-    print('![CALENDAR_LOG] _onVerticalUpdate вызван: ${details.localPosition}');
-    print('![CALENDAR_LOG] _resizingDetails: ${_resizingDetails.value.appointmentView != null}, isForwardResize: ${_resizingDetails.value.isForwardResize}, isBackwardResize: ${_resizingDetails.value.isBackwardResize}');
     if (_resizingDetails.value.appointmentView == null) {
-      print('![CALENDAR_LOG] _onVerticalUpdate: appointmentView == null');
       return;
     }
 
@@ -7059,15 +7044,11 @@ class _CalendarViewState extends State<_CalendarView>
     final bool isForwardResize = _resizingDetails.value.isForwardResize;
     final bool isBackwardResize = _resizingDetails.value.isBackwardResize;
 
-    print('![CALENDAR_LOG] Проверка флагов в _onVerticalUpdate: isForwardResize=$isForwardResize, isBackwardResize=$isBackwardResize');
-
     // Устанавливаем курсор в соответствии с типом ресайза
     if (isForwardResize) {
       _mouseCursor = SystemMouseCursors.resizeDown;
-      print('![CALENDAR_LOG] Используем сохраненный флаг: ресайз вниз');
     } else if (isBackwardResize) {
       _mouseCursor = SystemMouseCursors.resizeUp;
-      print('![CALENDAR_LOG] Используем сохраненный флаг: ресайз вверх');
     }
 
     final double allDayPanelHeight = _isExpanded
@@ -7099,8 +7080,6 @@ class _CalendarViewState extends State<_CalendarView>
         _resizingDetails.value.appointmentView!.appointmentRect!.left,
         yPosition);
 
-    print('![CALENDAR_LOG] Обновление позиции ресайза: $yPosition, isForwardResize: $isForwardResize, isBackwardResize: $isBackwardResize');
-
     // Проверяем корректность направления ресайза
     if (isForwardResize) {
       // При ресайзе вниз позиция должна быть ниже верхней границы встречи
@@ -7108,14 +7087,12 @@ class _CalendarViewState extends State<_CalendarView>
       // Позволяем пользователю свободно перемещать палец для более точного ресайза
       final double appointmentTop = _resizingDetails.value.appointmentView!.appointmentRect!.top;
       if (yPosition < appointmentTop) {
-        print('![CALENDAR_LOG] Позиция ниже верхней границы встречи: $yPosition < $appointmentTop');
         // Не корректируем позицию, чтобы избежать резкого скачка времени
       }
     } else if (isBackwardResize) {
       // При ресайзе вверх позиция должна быть выше нижней границы встречи
       final double appointmentBottom = _resizingDetails.value.appointmentView!.appointmentRect!.bottom;
       if (yPosition > appointmentBottom) {
-        print('![CALENDAR_LOG] Коррекция позиции для ресайза вверх: $yPosition -> $appointmentBottom');
         yPosition = appointmentBottom;
         _resizingDetails.value.position.value = Offset(
             _resizingDetails.value.appointmentView!.appointmentRect!.left,
@@ -7201,13 +7178,9 @@ class _CalendarViewState extends State<_CalendarView>
     // Обновляем время встречи в зависимости от направления ресайза
     if (_resizingDetails.value.isForwardResize) {
       updatedEndTime = resizingTime;
-      print('![CALENDAR_LOG] Обновляем конечное время встречи: $updatedEndTime');
     } else if (_resizingDetails.value.isBackwardResize) {
       updatedStartTime = resizingTime;
-      print('![CALENDAR_LOG] Обновляем начальное время встречи: $updatedStartTime');
     }
-
-    print('![CALENDAR_LOG] Обновление времени встречи: isForwardResize=${_resizingDetails.value.isForwardResize}, isBackwardResize=${_resizingDetails.value.isBackwardResize}');
 
     final DateTime callbackStartDate = updatedStartTime;
     final DateTime callbackEndDate = updatedEndTime;
@@ -7230,7 +7203,6 @@ class _CalendarViewState extends State<_CalendarView>
         widget.resourceCollection)) {
       if (CalendarViewHelper.shouldRaiseAppointmentResizeEndCallback(
           widget.calendar.onAppointmentResizeEnd)) {
-        print('CALENDAR_VIEW: onAppointmentResizeEnd - appointment: ${appointment.subject}, startTime: ${appointment.exactStartTime}, endTime: ${appointment.exactEndTime}');
         CalendarViewHelper.raiseAppointmentResizeEndCallback(
             widget.calendar,
             appointment.data,
@@ -7751,7 +7723,6 @@ class _CalendarViewState extends State<_CalendarView>
 
     if (CalendarViewHelper.shouldRaiseAppointmentResizeUpdateCallback(
         widget.calendar.onAppointmentResizeUpdate)) {
-      print('CALENDAR_VIEW: onAppointmentResizeUpdate - appointment: ${_resizingDetails.value.appointmentView!.appointment!.subject}, time: $resizingTime, position: ${_resizingDetails.value.position.value!}');
       CalendarViewHelper.raiseAppointmentResizeUpdateCallback(
           widget.calendar,
           _getCalendarAppointmentToObject(
@@ -8884,10 +8855,8 @@ class _CalendarViewState extends State<_CalendarView>
 
     // Для мобильных устройств принудительно активируем вертикальный ресайз, если установлен _resizingDetails
     if (widget.isMobilePlatform && _resizingDetails != null) {
-      // print('![CALENDAR_LOG] Принудительная активация ресайза: $_mouseCursor');
       isVerticalResize = true;
     }
-      print('![CALENDAR_LOG] _mouseCursor=$_mouseCursor');
 
     final bool isTimelineView = CalendarViewHelper.isTimelineView(widget.view);
     final bool isAllDayPanel = !isVerticalResize &&
@@ -8931,7 +8900,6 @@ class _CalendarViewState extends State<_CalendarView>
                   }
                 },
                 onPanUpdate: (DragUpdateDetails details) {
-                  print('![CALENDAR_LOG] onPanUpdate вызван: ${details.localPosition}');
                   if (isVerticalResize) {
                     _onVerticalUpdate(details);
                   } else {
@@ -11169,14 +11137,6 @@ class _CalendarViewState extends State<_CalendarView>
         });
       }
     } else {
-      print('![CALENDAR_LOG] Проверка условий для вертикального ресайза:');
-      print('yPosition: $yPosition, top: ${appointmentView.appointmentRect!.top}, bottom: ${appointmentView.appointmentRect!.bottom}, padding: $padding');
-      print('isSameTimeSlot start: ${CalendarViewHelper.isSameTimeSlot(
-              appointmentView.appointment!.actualStartTime,
-              appointmentView.appointment!.exactStartTime)}');
-      print('isSameTimeSlot end: ${CalendarViewHelper.isSameTimeSlot(
-              appointmentView.appointment!.actualEndTime,
-              appointmentView.appointment!.exactEndTime)}');
 
       // Увеличиваем область активации ресайза для мобильных устройств
       final double mobileResizeArea = widget.isMobilePlatform ? padding * 3 : padding;
@@ -11186,7 +11146,6 @@ class _CalendarViewState extends State<_CalendarView>
           (widget.isMobilePlatform || CalendarViewHelper.isSameTimeSlot(
               appointmentView.appointment!.actualStartTime,
               appointmentView.appointment!.exactStartTime))) {
-        print('![CALENDAR_LOG] Устанавливаем курсор resizeUp');
         setState(() {
           _mouseCursor = SystemMouseCursors.resizeUp;
         });
@@ -11195,7 +11154,6 @@ class _CalendarViewState extends State<_CalendarView>
           (widget.isMobilePlatform || CalendarViewHelper.isSameTimeSlot(
               appointmentView.appointment!.actualEndTime,
               appointmentView.appointment!.exactEndTime))) {
-        print('![CALENDAR_LOG] Устанавливаем курсор resizeDown');
         setState(() {
           _mouseCursor = SystemMouseCursors.resizeDown;
         });
