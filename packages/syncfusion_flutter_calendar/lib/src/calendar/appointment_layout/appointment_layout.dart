@@ -313,7 +313,7 @@ class _AppointmentLayoutState extends State<AppointmentLayout> {
       if (appointmentView.appointment != null &&
           appointmentView.appointmentRect != null) {
 
-        // Увеличиваем область касания для мобильных устройств
+        // Increase touch area for mobile devices
         final double touchPadding = widget.isMobilePlatform ? 10.0 : 0.0;
 
         if (appointmentView.appointmentRect!.left - touchPadding <= x &&
