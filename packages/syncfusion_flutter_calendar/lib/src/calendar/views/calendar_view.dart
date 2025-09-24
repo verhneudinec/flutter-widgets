@@ -5767,10 +5767,10 @@ class _CalendarViewState extends State<_CalendarView>
   bool _isResizeMode = false;
 
   /// Флаг, указывающий, что начато панорамирование
-  bool isPanStarted = false;
+  bool _isPanStarted = false;
 
   /// Флаг, указывающий, что панорамирование завершено
-  bool isPanEnded = false;
+  bool _isPanEnded = false;
 
   /// Текущая встреча, с которой происходит взаимодействие
   CalendarAppointment? _interactingAppointment;
@@ -6876,7 +6876,6 @@ class _CalendarViewState extends State<_CalendarView>
   }
 
   void _onVerticalStart(DragStartDetails details) {
-
     final double xPosition = details.localPosition.dx;
     double yPosition = details.localPosition.dy;
     final double timeLabelWidth = CalendarViewHelper.getTimeLabelWidth(
@@ -8889,8 +8888,8 @@ class _CalendarViewState extends State<_CalendarView>
             ? GestureDetector(
                 onPanStart: (DragStartDetails details) {
                   setState(() {
-                    isPanStarted = true;
-                    isPanEnded = false;
+                    _isPanStarted = true;
+                    _isPanEnded = false;
                   });
                   
                   if (isVerticalResize) {
@@ -8908,8 +8907,8 @@ class _CalendarViewState extends State<_CalendarView>
                 },
                 onPanEnd: (DragEndDetails details) {
                   setState(() {
-                    isPanStarted = false;
-                    isPanEnded = true;
+                    _isPanStarted = false;
+                    _isPanEnded = true;
                   });
 
                   if (isVerticalResize) {
@@ -9120,7 +9119,7 @@ class _CalendarViewState extends State<_CalendarView>
                           size: Size(timeLabelWidth, height),
                         ),
                       ),
-                      if (!isPanStarted)
+                      if (!_isPanStarted)
                         RepaintBoundary(
                           key: const ValueKey<String>('selection_view'),
                           child: CustomPaint(
