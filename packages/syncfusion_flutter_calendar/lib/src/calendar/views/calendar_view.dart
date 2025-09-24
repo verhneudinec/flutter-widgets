@@ -2019,7 +2019,8 @@ class _CustomCalendarScrollViewState extends State<CustomCalendarScrollView>
     final _CalendarViewState currentState = _getCurrentViewByVisibleDates()!;
     currentState._isFingerLifted = true;
 
-    // Переключаемся в режим ресайза, если есть активная встреча
+    // Переключаемся в режим ресайза только при долгом нажатии
+    // Для обычного тапа режим ресайза не активируется
     if (currentState._interactingAppointment != null) {
       currentState._isResizeMode = true;
 
@@ -7123,6 +7124,8 @@ class _CalendarViewState extends State<_CalendarView>
   void _onVerticalEnd(DragEndDetails details) {
     if (_resizingDetails.value.appointmentView == null) {
       _resizingDetails.value.position.value = null;
+      _isResizeMode = false;
+      _mouseCursor = SystemMouseCursors.basic;
       return;
     }
 
@@ -7230,6 +7233,7 @@ class _CalendarViewState extends State<_CalendarView>
             appointment.exactEndTime);
       }
 
+      _mouseCursor = SystemMouseCursors.basic;
       _resetResizingPainter();
       return;
     }
@@ -7756,6 +7760,8 @@ class _CalendarViewState extends State<_CalendarView>
   void _onHorizontalEnd(DragEndDetails details) {
     if (_resizingDetails.value.appointmentView == null) {
       _resizingDetails.value.position.value = null;
+      _isResizeMode = false;
+      _mouseCursor = SystemMouseCursors.basic;
       return;
     }
 
@@ -8734,6 +8740,8 @@ class _CalendarViewState extends State<_CalendarView>
     _resizingDetails.value.monthCellHeight = null;
     _resizingDetails.value.appointmentView = null;
     _resizingDetails.value.appointmentColor = Colors.transparent;
+    _isResizeMode = false;
+    _mouseCursor = SystemMouseCursors.basic;
   }
 
   // Returns the month view  as a child for the calendar view.
@@ -8928,6 +8936,11 @@ class _CalendarViewState extends State<_CalendarView>
                   } else {
                     _onHorizontalEnd(details);
                   }
+                },
+                onPanCancel: () {
+                  _isResizeMode = false;
+                  _mouseCursor = SystemMouseCursors.basic;
+                  _resetResizingPainter();
                 },
                 child: _isResizeMode && _interactingAppointment != null
                     ? IgnorePointer(
