@@ -5766,6 +5766,12 @@ class _CalendarViewState extends State<_CalendarView>
   /// Флаг, указывающий, что встреча находится в режиме ресайза
   bool _isResizeMode = false;
 
+  /// Флаг, указывающий, что начато панорамирование
+  bool isPanStarted = false;
+
+  /// Флаг, указывающий, что панорамирование завершено
+  bool isPanEnded = false;
+
   /// Текущая встреча, с которой происходит взаимодействие
   CalendarAppointment? _interactingAppointment;
 
@@ -8913,8 +8919,11 @@ class _CalendarViewState extends State<_CalendarView>
         child: widget.isMobilePlatform
             ? GestureDetector(
                 onPanStart: (DragStartDetails details) {
-                  print('![CALENDAR_LOG] onPanStart вызван: ${details.localPosition}');
-                  print('![CALENDAR_LOG] isVerticalResize: $isVerticalResize');
+                  setState(() {
+                    isPanStarted = true;
+                    isPanEnded = false;
+                  });
+                  
                   if (isVerticalResize) {
                     _onVerticalStart(details);
                   } else {
@@ -8930,7 +8939,11 @@ class _CalendarViewState extends State<_CalendarView>
                   }
                 },
                 onPanEnd: (DragEndDetails details) {
-                  print('![CALENDAR_LOG] onPanEnd вызван');
+                  setState(() {
+                    isPanStarted = false;
+                    isPanEnded = true;
+                  });
+
                   if (isVerticalResize) {
                     _onVerticalEnd(details);
                   } else {
@@ -9139,13 +9152,14 @@ class _CalendarViewState extends State<_CalendarView>
                           size: Size(timeLabelWidth, height),
                         ),
                       ),
-                      RepaintBoundary(
-                        key: const ValueKey<String>('selection_view'),
-                        child: CustomPaint(
-                          painter: _addSelectionView(),
-                          size: Size(width, height),
+                      if (!isPanStarted)
+                        RepaintBoundary(
+                          key: const ValueKey<String>('selection_view'),
+                          child: CustomPaint(
+                            painter: _addSelectionView(),
+                            size: Size(width, height),
+                          ),
                         ),
-                      ),
                       _getCurrentTimeIndicator(
                           timeLabelWidth, width, height, false),
                     ]),
@@ -12919,34 +12933,23 @@ class _SelectionPainter extends CustomPainter {
         ..style = PaintingStyle.stroke
         ..strokeWidth = 1.5;
 
-      /// FIXME Now it's not work
-      // Определяем направление ресайза
-      final bool isForwardResize = mouseCursor == SystemMouseCursors.resizeDown ||
-          mouseCursor == SystemMouseCursors.resizeRight;
-      final bool isBackwardResize = mouseCursor == SystemMouseCursors.resizeUp ||
-          mouseCursor == SystemMouseCursors.resizeLeft;
+      // Верхний индикатор
+      final RRect topRRect = CalendarViewHelper.createResizeIndicator(
+        centerX: rect.left + rect.width / 2,
+        centerY: rect.top,
+      );
 
-      // Отрисовываем верхний ползунок только если нет ресайза вверх
-      if (!isForwardResize) {
-        final RRect topRRect = CalendarViewHelper.createResizeIndicator(
-          centerX: rect.left + rect.width / 2,
-          centerY: rect.top,
-        );
+      canvas.drawRRect(topRRect, indicatorPaint);
+      canvas.drawRRect(topRRect, indicatorBorderPaint);
 
-        // canvas.drawRRect(topRRect, indicatorPaint);
-        // canvas.drawRRect(topRRect, indicatorBorderPaint);
-      }
+      // Нижний индикатор
+      final RRect bottomRRect = CalendarViewHelper.createResizeIndicator(
+        centerX: rect.left + rect.width / 2,
+        centerY: rect.bottom,
+      );
 
-      // Отрисовываем нижний ползунок только если нет ресайза вниз
-      if (!isBackwardResize) {
-        final RRect bottomRRect = CalendarViewHelper.createResizeIndicator(
-          centerX: rect.left + rect.width / 2,
-          centerY: rect.bottom,
-        );
-
-        canvas.drawRRect(bottomRRect, indicatorPaint);
-        canvas.drawRRect(bottomRRect, indicatorBorderPaint);
-      }
+      canvas.drawRRect(bottomRRect, indicatorPaint);
+      canvas.drawRRect(bottomRRect, indicatorBorderPaint);
     }
   }
 
@@ -13830,7 +13833,7 @@ class _ResizingAppointmentPainter extends CustomPainter {
         }
       }
       rect = Rect.fromLTRB(left, top, right, bottom);
-      canvas.drawRect(rect, _shadowPainter..color = Colors.red);
+      canvas.drawRect(rect, _shadowPainter);
 
       // Добавляем ползунки для ресайза сверху и снизу
       final Paint indicatorPaint = Paint()
