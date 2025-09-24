@@ -294,6 +294,8 @@ class _CustomCalendarScrollViewState extends State<CustomCalendarScrollView>
       curve: Curves.easeIn,
     );
 
+    widget.calendar.controller?.addPropertyChangedListener(_calendarValueChangedListener);
+
     if (widget.calendar.enablePreload) {
       Future.delayed(const Duration(milliseconds: 150), () {
         if (mounted) {
@@ -819,7 +821,14 @@ class _CustomCalendarScrollViewState extends State<CustomCalendarScrollView>
     _animationController.dispose();
     _animation.removeListener(animationListener);
     _focusNode.dispose();
+    widget.calendar.controller?.removePropertyChangedListener(_calendarValueChangedListener);
     super.dispose();
+  }
+
+  void _calendarValueChangedListener(String property) {
+    if (property == 'clearSelection') {
+      _clearSelection();
+    }
   }
 
   void _handleAppointmentDragStart(
@@ -5854,6 +5863,8 @@ class _CalendarViewState extends State<_CalendarView>
     _currentTimeNotifier = ValueNotifier<int>(
         (today.day * 24 * 60) + (today.hour * 60) + today.minute);
     _timer = _createTimer();
+
+    
     super.initState();
   }
 

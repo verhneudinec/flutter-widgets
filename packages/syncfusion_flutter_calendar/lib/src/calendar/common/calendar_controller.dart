@@ -402,6 +402,10 @@ class CalendarController extends CalendarValueChangedNotifier {
   /// ```
   VoidCallback? backward;
 
+  void clearSelection() {
+    notifyPropertyChangedListeners('clearSelection');
+  }
+
   @override
   void debugFillProperties(DiagnosticPropertiesBuilder properties) {
     super.debugFillProperties(properties);
