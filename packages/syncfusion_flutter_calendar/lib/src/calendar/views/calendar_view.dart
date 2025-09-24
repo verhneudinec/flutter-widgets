@@ -6978,6 +6978,8 @@ class _CalendarViewState extends State<_CalendarView>
         appointmentView = _appointmentLayout.getAppointmentViewOnPoint(xPosition, yPosition);
       }
       if (appointmentView == null) {
+        _selectionPainter = null;
+        _isResizeMode = false;
         return;
       }
 
