@@ -13867,9 +13867,7 @@ class _ResizingAppointmentPainter extends CustomPainter {
       canvas.drawRRect(bottomIndicator, indicatorPaint);
       canvas.drawRRect(bottomIndicator, indicatorBorderPaint);
 
-      // При вертикальном ресайзе используем позицию пальца для более точного позиционирования
-      // При горизонтальном ресайзе используем верхнюю границу прямоугольника
-      yPosition = isHorizontalResize ? top : resizingDetails.value.position.value!.dy;
+      yPosition = top;
     }
     if (dragAndDropSettings.showTimeIndicator &&
         resizingDetails.value.resizingTime != null) {
