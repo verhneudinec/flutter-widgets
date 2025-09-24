@@ -12898,10 +12898,16 @@ class _SelectionPainter extends CustomPainter {
   void _drawAppointmentSelection(Canvas canvas) {
     Rect rect = appointmentView!.appointmentRect!.outerRect;
     rect = Rect.fromLTRB(rect.left, rect.top, rect.right, rect.bottom);
+    
+    // Применяем прозрачность к декорации
     _boxPainter = selectionDecoration!
         .createBoxPainter(_updateSelectionDecorationPainter);
+        
+    // Рисуем с прозрачностью 0.5
+    canvas.saveLayer(rect, Paint()..color = Colors.white.withOpacity(0.5));
     _boxPainter.paint(canvas, Offset(rect.left, rect.top),
         ImageConfiguration(size: rect.size));
+    canvas.restore();
 
     // Добавляем точки ресайза сверху и снизу для мобильных устройств
     if (calendar.allowAppointmentResize && isMobilePlatform) {
@@ -12913,40 +12919,29 @@ class _SelectionPainter extends CustomPainter {
         ..style = PaintingStyle.stroke
         ..strokeWidth = 1.5;
 
-      // Размеры ползунков
-      const double indicatorWidth = 20;
-      const double indicatorHeight = 10;
-
+      /// FIXME Now it's not work
       // Определяем направление ресайза
       final bool isForwardResize = mouseCursor == SystemMouseCursors.resizeDown ||
           mouseCursor == SystemMouseCursors.resizeRight;
       final bool isBackwardResize = mouseCursor == SystemMouseCursors.resizeUp ||
           mouseCursor == SystemMouseCursors.resizeLeft;
-      print('dksakasdkdas $mouseCursor');
+
       // Отрисовываем верхний ползунок только если нет ресайза вверх
       if (!isForwardResize) {
-        final RRect topRRect = RRect.fromRectAndRadius(
-          Rect.fromCenter(
-            center: Offset(rect.left + rect.width / 2, rect.top),
-            width: indicatorWidth,
-            height: indicatorHeight
-          ),
-          const Radius.circular(5)
+        final RRect topRRect = CalendarViewHelper.createResizeIndicator(
+          centerX: rect.left + rect.width / 2,
+          centerY: rect.top,
         );
 
-        canvas.drawRRect(topRRect, indicatorPaint);
-        canvas.drawRRect(topRRect, indicatorBorderPaint);
+        // canvas.drawRRect(topRRect, indicatorPaint);
+        // canvas.drawRRect(topRRect, indicatorBorderPaint);
       }
 
       // Отрисовываем нижний ползунок только если нет ресайза вниз
       if (!isBackwardResize) {
-        final RRect bottomRRect = RRect.fromRectAndRadius(
-          Rect.fromCenter(
-            center: Offset(rect.left + rect.width / 2, rect.bottom),
-            width: indicatorWidth,
-            height: indicatorHeight
-          ),
-          const Radius.circular(5)
+        final RRect bottomRRect = CalendarViewHelper.createResizeIndicator(
+          centerX: rect.left + rect.width / 2,
+          centerY: rect.bottom,
         );
 
         canvas.drawRRect(bottomRRect, indicatorPaint);
@@ -13852,23 +13847,15 @@ class _ResizingAppointmentPainter extends CustomPainter {
       const double cornerRadius = 4;
 
       // Верхний ползунок (для ресайза вверх)
-      final RRect topIndicator = RRect.fromRectAndRadius(
-        Rect.fromCenter(
-          center: Offset((left + right) / 2, top),
-          width: indicatorWidth,
-          height: indicatorHeight,
-        ),
-        const Radius.circular(cornerRadius),
+      final RRect topIndicator = CalendarViewHelper.createResizeIndicator(
+        centerX: (left + right) / 2,
+        centerY: top,
       );
 
       // Нижний ползунок (для ресайза вниз)
-      final RRect bottomIndicator = RRect.fromRectAndRadius(
-        Rect.fromCenter(
-          center: Offset((left + right) / 2, bottom),
-          width: indicatorWidth,
-          height: indicatorHeight,
-        ),
-        const Radius.circular(cornerRadius),
+      final RRect bottomIndicator = CalendarViewHelper.createResizeIndicator(
+        centerX: (left + right) / 2,
+        centerY: bottom,
       );
 
       // Отрисовка ползунков
