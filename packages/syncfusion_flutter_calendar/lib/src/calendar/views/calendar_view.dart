@@ -13572,7 +13572,7 @@ class _ResizingAppointmentPainter extends CustomPainter {
     final bool isBackwardResize = mouseCursor == SystemMouseCursors.resizeUp ||
         mouseCursor == SystemMouseCursors.resizeLeft;
 
-    const int textStartPadding = 6;
+    final int textStartPadding = 6;
     double xPosition = resizingDetails.value.position.value!.dx;
     double yPosition = resizingDetails.value.position.value!.dy;
 
@@ -13796,8 +13796,8 @@ class _ResizingAppointmentPainter extends CustomPainter {
     _updateTextPainter(span);
 
     if (view != CalendarView.month) {
-      _addSubjectTextForTimeslotViews(canvas, textStartPadding, xPosition,
-          yPosition, isRecurrenceAppointment, rect);
+      // _addSubjectTextForTimeslotViews(canvas, textStartPadding, xPosition,
+      //     yPosition, isRecurrenceAppointment, rect);
     } else {
       _addSubjectTextForMonthView(
           canvas,
