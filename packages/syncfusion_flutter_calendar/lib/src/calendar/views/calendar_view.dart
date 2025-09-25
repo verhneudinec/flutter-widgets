@@ -5708,7 +5708,7 @@ class _CalendarViewState extends State<_CalendarView>
   // count for per view
   double? _horizontalLinesCount;
 
-  AppointmentView? selectedAppointmentView;
+  AppointmentView? _selectedAppointmentView;
 
   // all day scroll controller is used to identify the scroll position for draw
   // all day selection.
@@ -6103,7 +6103,7 @@ class _CalendarViewState extends State<_CalendarView>
         _selectionPainter = null;
         _isResizeMode = false;
         _isPanStarted = false;
-        selectedAppointmentView = null;
+        _selectedAppointmentView = null;
       });
     }
   }
@@ -7276,7 +7276,6 @@ class _CalendarViewState extends State<_CalendarView>
     }
 
     _resetResizingPainter();
-    selectedAppointmentView = null;
   }
 
   void _onHorizontalStart(DragStartDetails details) {
@@ -8865,11 +8864,10 @@ class _CalendarViewState extends State<_CalendarView>
                   _isResizeMode = false;
                   _mouseCursor = SystemMouseCursors.basic;
                   _resetResizingPainter();
-                  selectedAppointmentView = null;
                 },
                 child: _isResizeMode && _interactingAppointment != null
                     ? IgnorePointer(
-                        ignoring: selectedAppointmentView == null || isAllDayPanel && _mouseCursor == SystemMouseCursors.basic,
+                        ignoring: _selectedAppointmentView == null || (isAllDayPanel && _mouseCursor == SystemMouseCursors.basic),
                         child: RepaintBoundary(
                             child: CustomPaint(
                           painter: _ResizingAppointmentPainter(
@@ -9641,6 +9639,7 @@ class _CalendarViewState extends State<_CalendarView>
     final DateTime? previousSelectedDate = _selectionPainter!.selectedDate;
     double xDetails = 0, yDetails = 0;
     bool isTapCallback = false;
+
     if (tapDetails != null) {
       isTapCallback = true;
       xDetails = tapDetails.localPosition.dx;
@@ -10106,7 +10105,7 @@ class _CalendarViewState extends State<_CalendarView>
     }
 
     widget.getCalendarState(_updateCalendarStateDetails);
-    selectedAppointmentView = null;
+    _selectedAppointmentView = null;
     dynamic selectedAppointment;
     List<dynamic>? selectedAppointments;
     CalendarElement targetElement = CalendarElement.viewHeader;
@@ -10275,6 +10274,9 @@ class _CalendarViewState extends State<_CalendarView>
         _selectionPainter!.appointmentView = null;
         _selectionNotifier.value = !_selectionNotifier.value;
         selectedAppointment = appointmentView.appointment;
+        if (selectedAppointment != null) {
+          _isResizeMode = true;
+        }
         selectedAppointments = null;
         targetElement = CalendarElement.appointment;
         _updateAllDaySelection(appointmentView, null);
@@ -10289,7 +10291,7 @@ class _CalendarViewState extends State<_CalendarView>
         _updateCalendarStateDetails.selectedDate = null;
       }
 
-      selectedAppointmentView = appointmentView;
+      _selectedAppointmentView = appointmentView;
     } else {
       final double yPosition = yDetails -
           viewHeaderHeight -
@@ -10316,7 +10318,7 @@ class _CalendarViewState extends State<_CalendarView>
 
         _selectionPainter!.appointmentView = appointmentView;
         _selectionNotifier.value = !_selectionNotifier.value;
-        selectedAppointmentView = appointmentView;
+        _selectedAppointmentView = appointmentView;
         selectedAppointment = appointmentView.appointment;
         targetElement = CalendarElement.appointment;
       }
@@ -10429,7 +10431,7 @@ class _CalendarViewState extends State<_CalendarView>
       }
     }
 
-    return selectedAppointmentView;
+    return _selectedAppointmentView;
   }
 
   /// Check the selected date region as enabled time region or not.
@@ -11511,6 +11513,8 @@ class _CalendarViewState extends State<_CalendarView>
       return null;
     }
 
+    AppointmentView? selectedAppointmentView;
+
     for (int i = 0; i < appointmentCollection.length; i++) {
       final AppointmentView appointmentView = appointmentCollection[i];
       if (appointmentView.appointment != null &&
@@ -11761,9 +11765,11 @@ class _CalendarViewState extends State<_CalendarView>
   }
 
   _SelectionPainter _addSelectionView([double? resourceItemHeight]) {
+    final hasSelectedAppointment = _selectedAppointmentView != null;
     AppointmentView? appointmentView;
+
     if (_selectionPainter?.appointmentView != null) {
-      appointmentView = _selectionPainter!.appointmentView;
+      appointmentView = appointmentView ?? _selectionPainter!.appointmentView;
     }
 
     _selectionPainter = _SelectionPainter(
@@ -11784,12 +11790,10 @@ class _CalendarViewState extends State<_CalendarView>
         _getPainterProperties(details);
       },
       _mouseCursor,
-      selectedAppointmentView != null
+      hasSelectedAppointment,
     );
 
-    if (appointmentView != null &&
-        _updateCalendarStateDetails.visibleAppointments
-            .contains(appointmentView.appointment)) {
+    if (hasSelectedAppointment) {
       _selectionPainter!.appointmentView = appointmentView;
     }
 
