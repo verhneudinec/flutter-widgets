@@ -5708,6 +5708,8 @@ class _CalendarViewState extends State<_CalendarView>
   // count for per view
   double? _horizontalLinesCount;
 
+  AppointmentView? selectedAppointmentView;
+
   // all day scroll controller is used to identify the scroll position for draw
   // all day selection.
   ScrollController? _scrollController;
@@ -6101,6 +6103,7 @@ class _CalendarViewState extends State<_CalendarView>
         _selectionPainter = null;
         _isResizeMode = false;
         _isPanStarted = false;
+        selectedAppointmentView = null;
       });
     }
   }
@@ -7273,6 +7276,7 @@ class _CalendarViewState extends State<_CalendarView>
     }
 
     _resetResizingPainter();
+    selectedAppointmentView = null;
   }
 
   void _onHorizontalStart(DragStartDetails details) {
@@ -8861,10 +8865,11 @@ class _CalendarViewState extends State<_CalendarView>
                   _isResizeMode = false;
                   _mouseCursor = SystemMouseCursors.basic;
                   _resetResizingPainter();
+                  selectedAppointmentView = null;
                 },
                 child: _isResizeMode && _interactingAppointment != null
                     ? IgnorePointer(
-                        ignoring: isAllDayPanel && _mouseCursor == SystemMouseCursors.basic,
+                        ignoring: selectedAppointmentView == null || isAllDayPanel && _mouseCursor == SystemMouseCursors.basic,
                         child: RepaintBoundary(
                             child: CustomPaint(
                           painter: _ResizingAppointmentPainter(
@@ -10101,7 +10106,7 @@ class _CalendarViewState extends State<_CalendarView>
     }
 
     widget.getCalendarState(_updateCalendarStateDetails);
-    AppointmentView? selectedAppointmentView;
+    selectedAppointmentView = null;
     dynamic selectedAppointment;
     List<dynamic>? selectedAppointments;
     CalendarElement targetElement = CalendarElement.viewHeader;
@@ -11506,7 +11511,6 @@ class _CalendarViewState extends State<_CalendarView>
       return null;
     }
 
-    AppointmentView? selectedAppointmentView;
     for (int i = 0; i < appointmentCollection.length; i++) {
       final AppointmentView appointmentView = appointmentCollection[i];
       if (appointmentView.appointment != null &&
@@ -11780,6 +11784,7 @@ class _CalendarViewState extends State<_CalendarView>
         _getPainterProperties(details);
       },
       _mouseCursor,
+      selectedAppointmentView != null
     );
 
     if (appointmentView != null &&
@@ -12489,7 +12494,8 @@ class _SelectionPainter extends CustomPainter {
       this.showWeekNumber,
       this.isMobilePlatform,
       this.getCalendarState,
-      this.mouseCursor)
+      this.mouseCursor,
+      this.isSelected)
       : super(repaint: repaintNotifier);
 
   final SfCalendar calendar;
@@ -12502,6 +12508,7 @@ class _SelectionPainter extends CustomPainter {
   final bool isRTL;
   final UpdateCalendarState getCalendarState;
   final SystemMouseCursor? mouseCursor;
+  final bool isSelected;
 
   int selectedResourceIndex;
   final double? resourceItemHeight;
@@ -12517,6 +12524,10 @@ class _SelectionPainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
+    if (!isSelected) {
+      // return;
+    }
+
     selectionDecoration ??= BoxDecoration(
       color: Colors.transparent,
       border: Border.all(color: calendarTheme.selectionBorderColor!, width: 2),
