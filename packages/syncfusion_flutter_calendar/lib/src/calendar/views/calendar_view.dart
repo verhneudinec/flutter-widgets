@@ -12800,7 +12800,7 @@ class _SelectionPainter extends CustomPainter {
     _boxPainter = selectionDecoration!
         .createBoxPainter(_updateSelectionDecorationPainter);
         
-    // canvas.saveLayer(rect, Paint()..color = Colors.white.withOpacity(0.5));
+    canvas.save();
     _boxPainter.paint(canvas, Offset(rect.left, rect.top),
         ImageConfiguration(size: rect.size));
     canvas.restore();
