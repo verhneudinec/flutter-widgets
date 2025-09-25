@@ -8888,7 +8888,8 @@ class _CalendarViewState extends State<_CalendarView>
                               widget.view,
                               _mouseCursor,
                               weekNumberPanelWidth,
-                              widget.calendarTheme),
+                              widget.calendarTheme,
+                              widget.calendar.selectionDecoration),
                         )))
                     : Container()) 
             : GestureDetector(
@@ -8922,7 +8923,8 @@ class _CalendarViewState extends State<_CalendarView>
                           widget.view,
                           _mouseCursor,
                           weekNumberPanelWidth,
-                          widget.calendarTheme),
+                          widget.calendarTheme,
+                          widget.calendar.selectionDecoration),
                     )))));
   }
 
@@ -12822,6 +12824,10 @@ class _SelectionPainter extends CustomPainter {
   }
 
   void _drawAppointmentSelection(Canvas canvas) {
+    if (!isSelected) {
+      return;
+    }
+
     Rect rect = appointmentView!.appointmentRect!.outerRect;
     rect = Rect.fromLTRB(rect.left, rect.top, rect.right, rect.bottom);
     
@@ -12894,7 +12900,8 @@ class _SelectionPainter extends CustomPainter {
         oldWidget.view != view ||
         oldWidget.visibleDates != visibleDates ||
         oldWidget.selectedResourceIndex != selectedResourceIndex ||
-        oldWidget.isRTL != isRTL || oldWidget.mouseCursor != mouseCursor;
+        oldWidget.isRTL != isRTL ||
+        oldWidget.appointmentView != appointmentView;
   }
 }
 
@@ -13507,7 +13514,8 @@ class _ResizingAppointmentPainter extends CustomPainter {
       this.view,
       this.mouseCursor,
       this.weekNumberPanelWidth,
-      this.calendarTheme)
+      this.calendarTheme,
+      this.selectionDecoration)
       : super(repaint: resizingDetails.value.position);
 
   final ValueNotifier<_ResizingPaintDetails> resizingDetails;
@@ -13540,8 +13548,11 @@ class _ResizingAppointmentPainter extends CustomPainter {
 
   final double timeIntervalHeight;
 
+  final Decoration? selectionDecoration;
+
   final Paint _shadowPainter = Paint();
   final TextPainter _textPainter = TextPainter();
+  BoxPainter? _boxPainter;
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -13561,7 +13572,7 @@ class _ResizingAppointmentPainter extends CustomPainter {
     final bool isBackwardResize = mouseCursor == SystemMouseCursors.resizeUp ||
         mouseCursor == SystemMouseCursors.resizeLeft;
 
-    const int textStartPadding = 3;
+    const int textStartPadding = 6;
     double xPosition = resizingDetails.value.position.value!.dx;
     double yPosition = resizingDetails.value.position.value!.dy;
 
@@ -13645,15 +13656,7 @@ class _ResizingAppointmentPainter extends CustomPainter {
             resizingDetails.value.appointmentView!.appointmentRect!.height;
         rect = Rect.fromLTRB(left, top, right, bottom);
         canvas.drawRect(rect, _shadowPainter);
-        paintBorder(canvas, rect,
-            left: BorderSide(
-                color: calendarTheme.selectionBorderColor!, width: 2),
-            right: BorderSide(
-                color: calendarTheme.selectionBorderColor!, width: 2),
-            bottom: BorderSide(
-                color: calendarTheme.selectionBorderColor!, width: 2),
-            top: BorderSide(
-                color: calendarTheme.selectionBorderColor!, width: 2));
+        _drawSelectionDecoration(canvas, rect);
       }
     } else {
       if (isForwardResize) {
@@ -13742,6 +13745,7 @@ class _ResizingAppointmentPainter extends CustomPainter {
       }
       rect = Rect.fromLTRB(left, top, right, bottom);
       canvas.drawRect(rect, _shadowPainter);
+      _drawSelectionDecoration(canvas, rect);
 
       // Add resize indicators
       final Paint indicatorPaint = Paint()
@@ -13806,12 +13810,29 @@ class _ResizingAppointmentPainter extends CustomPainter {
           yPosition);
     }
 
-    paintBorder(canvas, rect,
-        left: BorderSide(color: calendarTheme.selectionBorderColor!, width: 2),
-        right: BorderSide(color: calendarTheme.selectionBorderColor!, width: 2),
-        bottom:
-            BorderSide(color: calendarTheme.selectionBorderColor!, width: 2),
-        top: BorderSide(color: calendarTheme.selectionBorderColor!, width: 2));
+    _drawSelectionDecoration(canvas, rect);
+  }
+
+  /// Draws the selection decoration using the provided selectionDecoration
+  /// or falls back to the default border style
+  void _drawSelectionDecoration(Canvas canvas, Rect rect) {
+    if (selectionDecoration != null) {
+      // Use the provided selectionDecoration
+      final BoxPainter painter = selectionDecoration!.createBoxPainter();
+      painter.paint(canvas, Offset(rect.left, rect.top),
+          ImageConfiguration(size: Size(rect.width, rect.height)));
+    } else {
+      // Fallback to default border style
+      paintBorder(canvas, rect,
+          left:
+              BorderSide(color: calendarTheme.selectionBorderColor!, width: 2),
+          right:
+              BorderSide(color: calendarTheme.selectionBorderColor!, width: 2),
+          bottom:
+              BorderSide(color: calendarTheme.selectionBorderColor!, width: 2),
+          top:
+              BorderSide(color: calendarTheme.selectionBorderColor!, width: 2));
+    }
   }
 
   /// Draw the time indicator when resizing the appointment on all calendar
