@@ -5795,6 +5795,7 @@ class _CalendarViewState extends State<_CalendarView>
         _ResizingPaintDetails(position: ValueNotifier<Offset?>(null)));
     _viewHeaderNotifier = ValueNotifier<Offset?>(null)
       ..addListener(_timelineViewHoveringUpdate);
+    widget.calendar.controller?.addPropertyChangedListener(_calendarValueChangedListener);
     if (!CalendarViewHelper.isTimelineView(widget.view) &&
         widget.view != CalendarView.month) {
       _animationController = AnimationController(
@@ -5993,6 +5994,8 @@ class _CalendarViewState extends State<_CalendarView>
 
   @override
   void dispose() {
+    widget.calendar.controller?.removePropertyChangedListener(_calendarValueChangedListener);
+
     _viewHeaderNotifier.removeListener(_timelineViewHoveringUpdate);
 
     _calendarCellNotifier.removeListener(_timelineViewHoveringUpdate);
@@ -6089,6 +6092,16 @@ class _CalendarViewState extends State<_CalendarView>
             _timelineViewVerticalScrollController!.offset) {
       _timelineViewVerticalScrollController!
           .jumpTo(widget.resourcePanelScrollController!.offset);
+    }
+  }
+
+  void _calendarValueChangedListener(String property) {
+    if (property == 'clearSelection') {
+      setState(() {
+        _selectionPainter = null;
+        _isResizeMode = false;
+        _isPanStarted = false;
+      });
     }
   }
 
