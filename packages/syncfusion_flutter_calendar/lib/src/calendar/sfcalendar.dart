@@ -219,6 +219,7 @@ class SfCalendar extends StatefulWidget {
     this.onDragStart,
     this.onDragUpdate,
     this.onDragEnd,
+    this.onEmptySpaceLongPressEnd,
     this.enablePreload = false,
   })  : assert(firstDayOfWeek >= 1 && firstDayOfWeek <= 7),
         assert(headerHeight >= 0),
@@ -1713,6 +1714,15 @@ class SfCalendar extends StatefulWidget {
   ///
   /// ```
   final ViewChangedCallback? onViewChanged;
+  
+  /// Called when a long press on empty space ends in [SfCalendar].
+  ///
+  /// The date and time at which the long press ended is passed to the callback.
+  ///
+  /// See also:
+  /// * [EmptySpaceLongPressEndCallback], which is the callback used by this.
+  /// * [onLongPress], which is called when a long press is detected on calendar elements.
+  final EmptySpaceLongPressEndCallback? onEmptySpaceLongPressEnd;
 
   /// Called whenever the [SfCalendar] elements tapped on view.
   ///

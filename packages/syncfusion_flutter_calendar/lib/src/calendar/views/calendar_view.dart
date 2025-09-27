@@ -1076,6 +1076,10 @@ class _CustomCalendarScrollViewState extends State<CustomCalendarScrollView>
 
     if (selectedDateTime != null) {
       _updateCalendarState(currentState);
+      
+      if (currentState.widget.calendar.onEmptySpaceLongPressEnd != null) {
+        currentState.widget.calendar.onEmptySpaceLongPressEnd!(currentState._selectedDateRangeStart!, currentState._selectedDateRangeEnd!);
+      }
     }
   }
 
