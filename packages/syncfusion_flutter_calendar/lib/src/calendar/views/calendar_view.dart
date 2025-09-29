@@ -992,8 +992,7 @@ class _CustomCalendarScrollViewState extends State<CustomCalendarScrollView>
       double viewHeaderHeight,
       double timeLabelWidth) {
     if (isTimelineView) {
-      return _getDateTimeFromPositionForTimeline(
-          currentState, localPosition, viewHeaderHeight, timeLabelWidth);
+      return null;
     } else if (widget.view == CalendarView.month) {
       return _getDateTimeFromPositionForMonth(
           currentState, localPosition, viewHeaderHeight);
@@ -1046,12 +1045,31 @@ class _CustomCalendarScrollViewState extends State<CustomCalendarScrollView>
     ) {
 
     final Offset localPosition = details.localPosition;
-    final DateTime? selectedDateTime = _getSelectedDateTimeFromPosition(
+    final DateTime rangeStart = currentState._selectionPainter!.selectedRangeStart!;
+    final DateTime? rangeEnd = _getSelectedDateTimeFromPosition(
         localPosition, currentState, isTimelineView, viewHeaderHeight, timeLabelWidth);
 
-    if (selectedDateTime != null) {
-      currentState._selectionPainter!.selectedRangeEnd = selectedDateTime;
-      currentState._selectedDateRangeEnd = selectedDateTime;
+    if (rangeStart != null && rangeEnd != null) {
+      final isSameDay = rangeEnd.day == rangeStart.day &&
+          rangeEnd.month == rangeStart.month &&
+          rangeEnd.year == rangeStart.year;
+
+      // Check if the selected date is in the same day as the start date
+      if (!isSameDay && widget.view != CalendarView.month) {
+        // Если да, устанавливаем конечную дату на конец текущего дня
+        final DateTime endOfDay = DateTime(
+          rangeStart.year, 
+          rangeStart.month, 
+          rangeStart.day, 
+          23, 59
+        );
+
+        currentState._selectionPainter!.selectedRangeEnd = endOfDay;
+        currentState._selectedDateRangeEnd = endOfDay;
+      } else {
+        currentState._selectionPainter!.selectedRangeEnd = rangeEnd;
+        currentState._selectedDateRangeEnd = rangeEnd;
+      }
 
       currentState._selectionPainter!.repaintNotifier.value =
           !currentState._selectionPainter!.repaintNotifier.value;
@@ -1075,53 +1093,20 @@ class _CustomCalendarScrollViewState extends State<CustomCalendarScrollView>
         localPosition, currentState, isTimelineView, viewHeaderHeight, timeLabelWidth);
 
     if (selectedDateTime != null) {
-      _updateCalendarState(currentState);
-      
       if (currentState.widget.calendar.onEmptySpaceLongPressEnd != null) {
         currentState.widget.calendar.onEmptySpaceLongPressEnd!(currentState._selectedDateRangeStart!, currentState._selectedDateRangeEnd!);
       }
+
+      // Reset the selection state
+      currentState._selectedDateRangeStart = null;
+      currentState._selectedDateRangeEnd = null;
+      currentState._selectionPainter = null;
+      currentState._selectionNotifier.value = false;
+      currentState._selectedAppointmentView = null;
+      currentState._selectionPainter?.selectedDate = null;
+
+      _updateCalendarState(currentState);
     }
-  }
-
-  // Get date and time from position for timeline view
-  DateTime? _getDateTimeFromPositionForTimeline(
-      _CalendarViewState currentState,
-      Offset position,
-      double viewHeaderHeight,
-      double timeLabelWidth) {
-
-    if (position.dy < viewHeaderHeight) {
-      return null;
-    }
-
-    final double xPosition = position.dx;
-    final double yPosition = position.dy - viewHeaderHeight;
-
-    final double timeIntervalHeight = currentState._getTimeIntervalHeight(
-        widget.calendar, widget.view, currentState.widget.width, currentState.widget.height,
-        currentState.widget.visibleDates.length,
-        CalendarViewHelper.isMobileLayoutUI(currentState.widget.width, true));
-
-    final int timeInterval = (xPosition / timeIntervalHeight).truncate();
-
-    if (timeInterval < 0 || timeInterval >= currentState.widget.visibleDates.length) {
-      return null;
-    }
-
-    final DateTime date = currentState.widget.visibleDates[timeInterval];
-
-    // Get initial time from calendar settings
-    final TimeSlotViewSettings settings = widget.calendar.timeSlotViewSettings;
-    final int startHour = settings.startHour.toInt();
-    final int startMinute = ((settings.startHour - startHour) * 60).toInt();
-
-    // Calculate hours and minutes from start of day
-    final double totalMinutes = (yPosition / timeIntervalHeight) * settings.timeInterval.inMinutes +
-        (startHour * 60 + startMinute);
-    final int hour = (totalMinutes / 60).floor();
-    final int minute = (totalMinutes % 60).floor();
-
-    return DateTime(date.year, date.month, date.day, hour, minute);
   }
 
   // Get date and time from position for month view
@@ -1129,45 +1114,30 @@ class _CustomCalendarScrollViewState extends State<CustomCalendarScrollView>
       _CalendarViewState currentState,
       Offset position,
       double viewHeaderHeight) {
-
-    if (position.dy < viewHeaderHeight) {
-      return null;
-    }
+    // Skip if tapped on header
+    if (position.dy < viewHeaderHeight) return null;
 
     final double yPosition = position.dy - viewHeaderHeight;
-    final double xPosition = position.dx;
-
     final double cellWidth = widget.width / DateTime.daysPerWeek;
     final double cellHeight = (widget.height - viewHeaderHeight) / 6;
 
+    // Get cell indices
     final int rowIndex = (yPosition / cellHeight).truncate();
-    final int columnIndex = (xPosition / cellWidth).truncate();
+    final int columnIndex = (position.dx / cellWidth).truncate();
 
-    if (rowIndex < 0 || rowIndex >= 6 || columnIndex < 0 || columnIndex >= 7) {
-      return null;
-    }
+    // Validate cell bounds
+    if (rowIndex < 0 || rowIndex >= 6 || columnIndex < 0 || columnIndex >= 7) return null;
 
+    // Get date from visible dates
     final int dateIndex = (rowIndex * 7) + columnIndex;
-
-    if (dateIndex < 0 || dateIndex >= currentState.widget.visibleDates.length) {
-      return null;
-    }
+    if (dateIndex >= currentState.widget.visibleDates.length) return null;
 
     final DateTime date = currentState.widget.visibleDates[dateIndex];
 
-    // Calculate time within cell with 15-minute precision
-    final double yInCell = yPosition - (rowIndex * cellHeight);
-    final double cellProgress = yInCell / cellHeight;
-
-    // Divide day into 96 intervals of 15 minutes (24 hours * 4 intervals per hour)
-    const int intervalsPerDay = 96;
-    final int intervalIndex = (cellProgress * intervalsPerDay).floor();
-
-    // Limit interval within day bounds
-    final int clampedInterval = intervalIndex.clamp(0, intervalsPerDay - 1);
-
-    final int hour = clampedInterval ~/ 4;
-    final int minute = (clampedInterval % 4) * 15;
+    // Calculate time with 15-minute precision
+    final double cellProgress = (yPosition - (rowIndex * cellHeight)) / cellHeight;
+    final int hour = (cellProgress * 24).floor();
+    final int minute = ((cellProgress * 24 * 60) % 60).floor() ~/ 15 * 15;
 
     return DateTime(date.year, date.month, date.day, hour, minute);
   }
@@ -1178,60 +1148,45 @@ class _CustomCalendarScrollViewState extends State<CustomCalendarScrollView>
       Offset position,
       double viewHeaderHeight,
       double timeLabelWidth) {
-
+    // Skip if tapped on header or all-day area
     final double allDayHeight = currentState._allDayHeight;
+    if (position.dy < viewHeaderHeight + allDayHeight) return null;
 
-    if (position.dy < viewHeaderHeight + allDayHeight) {
-      return null;
-    }
-
+    // Calculate adjusted position
     double xPosition = position.dx;
-    final double yPosition = position.dy - viewHeaderHeight - allDayHeight + currentState._scrollController!.offset;
+    if (!widget.isRTL) xPosition -= timeLabelWidth;
 
-    if (!widget.isRTL) {
-      xPosition -= timeLabelWidth;
-    }
+    final double yPosition = position.dy - viewHeaderHeight - allDayHeight +
+                            currentState._scrollController!.offset;
 
+    // Get column index and validate bounds
     final double cellWidth = (widget.width - timeLabelWidth) /
-        currentState.widget.visibleDates.length;
-
+                            currentState.widget.visibleDates.length;
     final int columnIndex = (xPosition / cellWidth).truncate();
 
-    if (columnIndex < 0 || columnIndex >= currentState.widget.visibleDates.length) {
-      return null;
-    }
+    if (columnIndex < 0 || columnIndex >= currentState.widget.visibleDates.length) return null;
 
+    // Get base date from visible dates
     final DateTime date = currentState.widget.visibleDates[columnIndex];
 
+    // Calculate time with 15-minute precision
     final double timeIntervalHeight = currentState._getTimeIntervalHeight(
-        widget.calendar, widget.view,
-        widget.width, widget.height,
-        currentState.widget.visibleDates.length,
-        widget.isMobilePlatform);
+        widget.calendar, widget.view, widget.width, widget.height,
+        currentState.widget.visibleDates.length, widget.isMobilePlatform);
 
     final double minuteHeight = timeIntervalHeight /
         CalendarViewHelper.getTimeInterval(widget.calendar.timeSlotViewSettings);
 
+    // Calculate minutes from start time
     final int startHour = widget.calendar.timeSlotViewSettings.startHour.toInt();
-    final Duration startDuration = Duration(
-        hours: startHour,
-        minutes: ((widget.calendar.timeSlotViewSettings.startHour - startHour) * 60).toInt());
+    final int startMinutes = ((widget.calendar.timeSlotViewSettings.startHour - startHour) * 60).toInt();
 
-    // Inverse formula: yPosition = difference.inMinutes * minuteHeight
-    // Solve for difference: difference.inMinutes = yPosition / minuteHeight
-    final double differenceInMinutesDouble = yPosition / minuteHeight;
+    // Round to nearest 15 minutes
+    final int totalMinutes = startHour * 60 + startMinutes +
+                            ((yPosition / minuteHeight / 15).round() * 15);
 
-    // First round to 15-minute intervals at differenceInMinutes level
-    final int roundedDifferenceMinutes = ((differenceInMinutesDouble / 15).round() * 15);
-    final Duration selectedDuration = startDuration + Duration(minutes: roundedDifferenceMinutes);
-
-    // Get final minutes (already rounded)
-    final int totalMinutes = selectedDuration.inMinutes;
-    final int roundedMinutes = totalMinutes;
-    final int finalHour = roundedMinutes ~/ 60;
-    final int finalMinute = roundedMinutes % 60;
-
-    return DateTime(date.year, date.month, date.day, finalHour, finalMinute);
+    return DateTime(date.year, date.month, date.day,
+                   totalMinutes ~/ 60, totalMinutes % 60);
   }
 
   AppointmentView? _getDragAppointment(
@@ -6258,21 +6213,28 @@ class _CalendarViewState extends State<_CalendarView>
   Widget build(BuildContext context) {
     _isRTL = CalendarViewHelper.isRTLLayout(context);
     widget.getCalendarState(_updateCalendarStateDetails);
+
+    Widget calendarView;
     switch (widget.view) {
       case CalendarView.schedule:
         return Container();
       case CalendarView.month:
-        return _getMonthView();
+        calendarView = _getMonthView();
+        break;
       case CalendarView.day:
       case CalendarView.week:
       case CalendarView.workWeek:
-        return _getDayView();
+        calendarView = _getDayView();
+        break;
       case CalendarView.timelineDay:
       case CalendarView.timelineWeek:
       case CalendarView.timelineWorkWeek:
       case CalendarView.timelineMonth:
-        return _getTimelineView();
+        calendarView = _getTimelineView();
+        break;
     }
+
+    return calendarView;
   }
 
   @override
@@ -12947,13 +12909,6 @@ class _SelectionPainter extends CustomPainter {
 
   void _drawMonthSelection(Canvas canvas, Size size, double width) {
     final int visibleDatesLength = visibleDates.length;
-
-    // If there is a date range (selectedDate and selectedRangeEnd),
-    if (selectedDate != null && selectedRangeEnd != null) {
-      _drawMonthRangeSelection(canvas, size, width);
-      return;
-    }
-
     if (selectedDate != null && !isDateWithInDateRange(
         visibleDates[0], visibleDates[visibleDatesLength - 1], selectedDate)) {
       return;
@@ -12991,6 +12946,13 @@ class _SelectionPainter extends CustomPainter {
           } else {
             _xPosition = rowIndex * _cellWidth + weekNumberPanelWidth;
           }
+
+          // If there is a date range (selectedDate and selectedRangeEnd),
+          if (selectedRangeEnd != null) {
+            _drawMonthRangeSelection(canvas, size, width);
+            return;
+          }
+
           _drawSlotSelection(width, size.height, canvas);
           break;
         }
@@ -13091,12 +13053,6 @@ class _SelectionPainter extends CustomPainter {
 
   void _drawDaySelection(
       Canvas canvas, Size size, double width, double timeLabelWidth) {
-    // If there is a date range selected (selectedDate and selectedRangeEnd)
-    if (selectedDate != null && selectedRangeEnd != null) {
-      _drawDayRangeSelection(canvas, size, width, timeLabelWidth);
-      return;
-    }
-
     if (isSameDate(visibleDates[0], selectedDate)) {
       if (isRTL) {
         _xPosition = 0;
@@ -13106,32 +13062,114 @@ class _SelectionPainter extends CustomPainter {
 
       _yPosition = AppointmentHelper.timeToPosition(
           calendar, selectedDate!, timeIntervalHeight);
-      _drawSlotSelection(width + timeLabelWidth, size.height, canvas);
+
+      // Draw range selection if end date is not null.
+      if (selectedRangeStart != null && selectedRangeEnd != null) {
+        return _drawDayRangeSelection(canvas, size, width, timeLabelWidth, selectedRangeStart!, selectedRangeEnd!);
+      }
+
+      return _drawSlotSelection(width + timeLabelWidth, size.height, canvas);
     }
   }
 
-  void _drawDayRangeSelection(Canvas canvas, Size size, double width, double timeLabelWidth) {
-    if (!isSameDate(visibleDates[0], selectedRangeStart ?? selectedDate) && !isSameDate(visibleDates[0], selectedRangeEnd)) {
-      return;
+  void _drawDayRangeSelection(Canvas canvas, Size size, double width, double timeLabelWidth, DateTime selectedRangeStart, DateTime selectedRangeEnd) {
+    _xPosition = timeLabelWidth;
+
+    final DateTime updatedStart = _updateTimeToSlot(selectedRangeStart);
+    final DateTime updatedEnd = _updateTimeToSlot(selectedRangeEnd);
+    
+    final double startYPosition = AppointmentHelper.timeToPosition(calendar, updatedStart, timeIntervalHeight);
+    final double endYPosition = AppointmentHelper.timeToPosition(calendar, updatedEnd, timeIntervalHeight);
+
+    _drawTimeRangeSelection(canvas, size, width + timeLabelWidth, startYPosition, endYPosition);
+
+    final Offset startPosition = Offset(0, startYPosition);
+    final Offset endPosition = Offset(0, endYPosition);
+    
+    // Draw the time indicator for the start time.
+    _drawTimeIndicator(
+      canvas,
+      size,
+      updatedStart,
+      startPosition,
+      calendar,
+      view,
+      visibleDates,
+      timeLabelWidth,
+      false,
+      calendarTheme,
+      timeIntervalHeight,
+      isRTL,
+      false
+    );
+
+    // Draw the time indicator for the end time, if there is enough distance.
+    if (endYPosition - startYPosition > 15) {
+      _drawTimeIndicator(
+        canvas,
+        size,
+        updatedEnd,
+        endPosition,
+        calendar,
+        view,
+        visibleDates,
+        timeLabelWidth,
+        false,
+        calendarTheme,
+        timeIntervalHeight,
+        isRTL,
+        true
+      );
+    }
+  }
+
+  /// Draw the time indicator when resizing the appointment on all calendar
+  /// views except month and timelineMonth views.
+  // Method for drawing the time indicator.
+  void _drawTimeIndicator(
+    Canvas canvas,
+    Size size,
+    DateTime time,
+    Offset position,
+    SfCalendar calendar,
+    CalendarView calendarView,
+    List<DateTime> visibleDates,
+    double timeLabelWidth,
+    bool isTimelineView,
+    SfCalendarThemeData calendarTheme,
+    double timeIntervalHeight,
+    bool isRTL,
+    bool isEndTime
+  ) {
+    final TextPainter textPainter = TextPainter();
+    final TextSpan span = TextSpan(
+      text: DateFormat(calendar.dragAndDropSettings.indicatorTimeFormat).format(time),
+      style: calendar.dragAndDropSettings.timeIndicatorStyle ??
+          calendarTheme.timeIndicatorTextStyle ??
+          TextStyle(
+            color: calendar.todayHighlightColor ?? calendarTheme.todayHighlightColor,
+            fontSize: 12,
+            fontWeight: FontWeight.bold
+          ),
+    );
+
+    textPainter.text = span;
+    textPainter.maxLines = 1;
+    textPainter.textDirection = TextDirection.ltr;
+    textPainter.textAlign = isRTL ? TextAlign.right : TextAlign.left;
+    textPainter.textWidthBasis = TextWidthBasis.longestLine;
+    textPainter.textScaler = TextScaler.linear(1.0);
+
+    textPainter.layout(maxWidth: isTimelineView ? timeIntervalHeight : timeLabelWidth);
+
+    final xPosition = (timeLabelWidth - textPainter.width) / 2;
+    double yPosition = position.dy;
+
+    if (!isEndTime) {
+      yPosition -= 10;
     }
 
-    final DateTime startTime = selectedRangeStart ?? selectedDate!;
-    final DateTime endTime = selectedRangeEnd ?? selectedDate!;
-
-    // Use exact start time without rounding, round only end time
-    final DateTime updatedStartTime = startTime;
-    final DateTime updatedEndTime = _updateTimeToSlot(endTime);
-
-    if (isRTL) {
-      _xPosition = 0;
-    } else {
-      _xPosition = timeLabelWidth;
-    }
-
-    final double startY = AppointmentHelper.timeToPosition(calendar, updatedStartTime, timeIntervalHeight);
-    final double endY = AppointmentHelper.timeToPosition(calendar, updatedEndTime, timeIntervalHeight);
-
-    _drawTimeRangeSelection(canvas, size, width + timeLabelWidth, startY, endY);
+    textPainter.paint(canvas, Offset(xPosition, yPosition));
   }
 
   void _drawTimeRangeSelection(Canvas canvas, Size size, double width, double startY, double endY) {
@@ -13214,13 +13252,6 @@ class _SelectionPainter extends CustomPainter {
   void _drawWeekSelection(
       Canvas canvas, Size size, double timeLabelWidth, double width) {
     final int visibleDatesLength = visibleDates.length;
-
-    // If the selected date range spans multiple days, draw the range selection
-    if (selectedDate != null && selectedRangeEnd != null) {
-      _drawWeekRangeSelection(canvas, size, timeLabelWidth, width);
-      return;
-    }
-
     if (isDateWithInDateRange(
         visibleDates[0], visibleDates[visibleDatesLength - 1], selectedDate)) {
       for (int i = 0; i < visibleDatesLength; i++) {
@@ -13235,6 +13266,13 @@ class _SelectionPainter extends CustomPainter {
           selectedDate = _updateSelectedDate();
           _yPosition = AppointmentHelper.timeToPosition(
               calendar, selectedDate!, timeIntervalHeight);
+
+          // If the selected date range spans multiple days, draw the range selection
+          if (selectedRangeStart != null && selectedRangeEnd != null) {
+            _drawWeekRangeSelection(canvas, size, timeLabelWidth, width, selectedRangeStart!, selectedRangeEnd!, _yPosition);
+            return;
+          }
+
           _drawSlotSelection(width + timeLabelWidth, size.height, canvas);
           break;
         }
@@ -13248,111 +13286,56 @@ class _SelectionPainter extends CustomPainter {
   /// selected date range spans multiple days. It calculates the start and end
   /// positions based on the time interval height and draws the selection
   /// using the provided canvas and size.
-  void _drawWeekRangeSelection(Canvas canvas, Size size, double timeLabelWidth, double width) {
-    final int visibleDatesLength = visibleDates.length;
-    final DateTime startDateTime = selectedRangeStart ?? selectedDate!;
-    final DateTime endDateTime = selectedRangeEnd ?? selectedDate!;
+  void _drawWeekRangeSelection(
+    Canvas canvas, Size size, double timeLabelWidth, double width,
+    DateTime startDateTime, DateTime endDateTime,
+    double startYPosition,
+  ) {
+    final DateTime updatedStart = _updateTimeToSlot(startDateTime);
+    final DateTime updatedEnd = _updateTimeToSlot(endDateTime);
 
-    // Check if the selected date range intersects with any visible dates
-    bool hasIntersection = false;
-    for (int i = 0; i < visibleDatesLength; i++) {
-      final DateTime visibleDate = visibleDates[i];
-      if ((visibleDate.isAfter(startDateTime) || isSameDate(visibleDate, startDateTime)) &&
-          (visibleDate.isBefore(endDateTime) || isSameDate(visibleDate, endDateTime))) {
-        hasIntersection = true;
-        break;
-      }
-    }
+    final double startY = AppointmentHelper.timeToPosition(calendar, updatedStart, timeIntervalHeight);
+    final double endY = AppointmentHelper.timeToPosition(calendar, updatedEnd, timeIntervalHeight);
 
-    if (!hasIntersection) {
-      return;
-    }
+    _drawTimeRangeSelection(canvas, size, _cellWidth, startY, endY);
+    
+    final Offset startPosition = Offset(_xPosition, startY);
+    final Offset endPosition = Offset(_xPosition, endY);
+    
+    // Start time indicator
+    _drawTimeIndicator(
+      canvas,
+      size,
+      updatedStart,
+      startPosition,
+      calendar,
+      view,
+      visibleDates,
+      timeLabelWidth,
+      false,
+      calendarTheme,
+      timeIntervalHeight,
+      isRTL,
+      false
+    );
 
-    // If the selected date range spans only one day, draw the same day range selection
-    if (isSameDate(startDateTime, endDateTime)) {
-      _drawWeekSameDayRangeSelection(canvas, size, timeLabelWidth, width, startDateTime, endDateTime);
-    } else {
-      _drawWeekMultiDayRangeSelection(canvas, size, timeLabelWidth, width, startDateTime, endDateTime);
-    }
-  }
-
-  /// Draws the time range selection for a single day in the week view.
-  ///
-  /// This method handles the rendering of the time range selection when the
-  /// selected date range spans only one day. It calculates the start and end
-  /// positions based on the time interval height and draws the selection
-  /// using the provided canvas and size.
-  void _drawWeekSameDayRangeSelection(Canvas canvas, Size size, double timeLabelWidth, double width,
-      DateTime startDateTime, DateTime endDateTime) {
-    final int visibleDatesLength = visibleDates.length;
-
-    for (int i = 0; i < visibleDatesLength; i++) {
-      if (isSameDate(startDateTime, visibleDates[i])) {
-        final int rowIndex = i;
-        if (isRTL) {
-          _xPosition = _cellWidth * (visibleDatesLength - 1 - rowIndex);
-        } else {
-          _xPosition = timeLabelWidth + _cellWidth * rowIndex;
-        }
-
-        final DateTime updatedStartTime = startDateTime;
-        final DateTime updatedEndTime = _updateTimeToSlot(endDateTime);
-
-        final double startY = AppointmentHelper.timeToPosition(calendar, updatedStartTime, timeIntervalHeight);
-        final double endY = AppointmentHelper.timeToPosition(calendar, updatedEndTime, timeIntervalHeight);
-
-        _drawTimeRangeSelection(canvas, size, _cellWidth, startY, endY);
-        break;
-      }
-    }
-  }
-
-  /// Draws the time range selection for a date range in the week view that spans multiple days.
-  ///
-  /// This method handles the rendering of the time range selection when the
-  /// selected date range spans multiple days. It calculates the start and end
-  /// positions based on the time interval height and draws the selection
-  /// using the provided canvas and size.
-  void _drawWeekMultiDayRangeSelection(Canvas canvas, Size size, double timeLabelWidth, double width,
-      DateTime startDateTime, DateTime endDateTime) {
-    final int visibleDatesLength = visibleDates.length;
-
-    for (int i = 0; i < visibleDatesLength; i++) {
-      final DateTime currentDate = visibleDates[i];
-
-      if ((currentDate.isAfter(startDateTime) || isSameDate(currentDate, startDateTime)) &&
-          (currentDate.isBefore(endDateTime) || isSameDate(currentDate, endDateTime))) {
-        final int rowIndex = i;
-        if (isRTL) {
-          _xPosition = _cellWidth * (visibleDatesLength - 1 - rowIndex);
-        } else {
-          _xPosition = timeLabelWidth + _cellWidth * rowIndex;
-        }
-
-        DateTime dayStartTime, dayEndTime;
-
-        if (isSameDate(currentDate, startDateTime)) {
-          // First day of the range - from selected time to the end of the day
-          dayStartTime = startDateTime;
-          dayEndTime = DateTime(currentDate.year, currentDate.month, currentDate.day, 23, 59, 59);
-        } else if (isSameDate(currentDate, endDateTime)) {
-          // Last day of the range - from the start of the day to selected time
-          dayStartTime = DateTime(currentDate.year, currentDate.month, currentDate.day, 0, 0, 0);
-          dayEndTime = endDateTime;
-        } else {
-          // Intermediate day - full day
-          dayStartTime = DateTime(currentDate.year, currentDate.month, currentDate.day, 0, 0, 0);
-          dayEndTime = DateTime(currentDate.year, currentDate.month, currentDate.day, 23, 59, 59);
-        }
-
-        final DateTime updatedStartTime = dayStartTime;
-        final DateTime updatedEndTime = _updateTimeToSlot(dayEndTime);
-
-        final double startY = AppointmentHelper.timeToPosition(calendar, updatedStartTime, timeIntervalHeight);
-        final double endY = AppointmentHelper.timeToPosition(calendar, updatedEndTime, timeIntervalHeight);
-
-        _drawTimeRangeSelection(canvas, size, _cellWidth, startY, endY);
-      }
+    // End time indicator
+    if (endY - startY > 15) {
+      _drawTimeIndicator(
+        canvas,
+        size,
+        updatedEnd,
+        endPosition,
+        calendar,
+        view,
+        visibleDates,
+        timeLabelWidth,
+        false,
+        calendarTheme,
+        timeIntervalHeight,
+        isRTL,
+        true
+      );
     }
   }
 
@@ -15304,5 +15287,22 @@ class _DraggingAppointmentRenderObject extends RenderBox
     }
 
     _textPainter.maxLines = maxLines;
+  }
+}
+
+/// This class is used to paint the custom indicator in the calendar view.
+class _CustomPainter extends CustomPainter {
+  _CustomPainter(this.paintFunction);
+
+  final Function(Canvas canvas, Size size) paintFunction;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    paintFunction(canvas, size);
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) {
+    return true;
   }
 }
