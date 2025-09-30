@@ -12794,13 +12794,17 @@ class _SelectionPainter extends CustomPainter {
   final bool showWeekNumber;
   final bool isMobilePlatform;
 
+  BoxDecoration get _selectionDecoration => BoxDecoration(
+    color: calendarTheme.selectionBorderColor!.withOpacity(0.2),
+    border: _selectionBorder,
+    borderRadius: const BorderRadius.all(Radius.circular(2)),
+  );
+
+  Border get _selectionBorder => Border.all(color: calendarTheme.selectionBorderColor!, width: 2);
+
   @override
   void paint(Canvas canvas, Size size) {
-    selectionDecoration ??= BoxDecoration(
-      color: Colors.transparent,
-      border: Border.all(color: calendarTheme.selectionBorderColor!, width: 2),
-      borderRadius: const BorderRadius.all(Radius.circular(2)),
-    );
+    selectionDecoration ??= _selectionDecoration;
 
     getCalendarState(_updateCalendarStateDetails);
 
@@ -12996,60 +13000,32 @@ class _SelectionPainter extends CustomPainter {
     }
   }
 
-  void _drawRangeSlotSelection(double x, double y, double width, double height,
-      Canvas canvas, bool isStart, bool isEnd) {
-    final Rect rect = Rect.fromLTWH(x, y, _cellWidth, _cellHeight);
-
-    Color selectionColor = calendarTheme.selectionBorderColor!;
-    if (selectionDecoration != null && selectionDecoration is BoxDecoration) {
-      final boxDecoration = selectionDecoration as BoxDecoration;
-      selectionColor = boxDecoration.color ?? calendarTheme.selectionBorderColor!;
-    }
-
+  void _drawRangeSlotSelection(
+    double x, double y, double width, double height,
+    Canvas canvas, bool isStart, bool isEnd
+  ) {
     BoxDecoration decoration;
     if (isStart && isEnd) {
       // Single cell (start and end dates are the same)
-      decoration = BoxDecoration(
-        color: selectionColor.withOpacity(0.3),
-        border: Border.all(color: calendarTheme.selectionBorderColor!, width: 2),
-        borderRadius: const BorderRadius.all(Radius.circular(2)),
+      decoration = _selectionDecoration.copyWith(
       );
     } else if (isStart) {
       // Start cell (first date in the range)
-      decoration = BoxDecoration(
-        color: selectionColor.withOpacity(0.3),
-        border: Border(
-          top: BorderSide(color: calendarTheme.selectionBorderColor!, width: 2),
-          bottom: BorderSide(color: calendarTheme.selectionBorderColor!, width: 2),
-          left: BorderSide(color: calendarTheme.selectionBorderColor!, width: 2),
-        ),
-        borderRadius: const BorderRadius.only(
-          topLeft: Radius.circular(2),
-          bottomLeft: Radius.circular(2),
-        ),
+      // Remove right border to connect with the next cell
+      decoration = _selectionDecoration.copyWith(
+        border: _selectionBorder.removeSide(BorderRemoveMode.right),
       );
     } else if (isEnd) {
       // End cell (last date in the range)
-      decoration = BoxDecoration(
-        color: selectionColor.withOpacity(0.3),
-        border: Border(
-          top: BorderSide(color: calendarTheme.selectionBorderColor!, width: 2),
-          bottom: BorderSide(color: calendarTheme.selectionBorderColor!, width: 2),
-          right: BorderSide(color: calendarTheme.selectionBorderColor!, width: 2),
-        ),
-        borderRadius: const BorderRadius.only(
-          topRight: Radius.circular(2),
-          bottomRight: Radius.circular(2),
-        ),
+      // Remove left border to connect with the previous cell
+      decoration = _selectionDecoration.copyWith(
+        border: _selectionBorder.removeSide(BorderRemoveMode.left),
       );
     } else {
-      // Intermediate cell (not the first or last in the range)
-      decoration = BoxDecoration(
-        color: selectionColor.withOpacity(0.1),
-        border: Border(
-          top: BorderSide(color: calendarTheme.selectionBorderColor!, width: 2),
-          bottom: BorderSide(color: calendarTheme.selectionBorderColor!, width: 2),
-        ),
+      // Intermediate cell (not the first and not the last in the range)
+      // Remove left and right borders to connect with the previous and next cells
+      decoration = _selectionDecoration.copyWith(
+        border: _selectionBorder.removeSide(BorderRemoveMode.horizontal),
       );
     }
 
@@ -13192,13 +13168,7 @@ class _SelectionPainter extends CustomPainter {
             ? startY + rangeHeight - padding
             : startY + rangeHeight);
 
-    final BoxDecoration rangeDecoration = BoxDecoration(
-      color: calendarTheme.selectionBorderColor!.withOpacity(0.2),
-      border: Border.all(color: calendarTheme.selectionBorderColor!, width: 2),
-      borderRadius: const BorderRadius.all(Radius.circular(2)),
-    );
-
-    _boxPainter = rangeDecoration.createBoxPainter(_updateSelectionDecorationPainter);
+    _boxPainter = _selectionDecoration.createBoxPainter(_updateSelectionDecorationPainter);
     _boxPainter.paint(canvas, Offset(rect.left, rect.top),
         ImageConfiguration(size: rect.size, textDirection: TextDirection.ltr));
   }
@@ -14400,19 +14370,20 @@ class _ResizingAppointmentPainter extends CustomPainter {
     if (selectionDecoration != null) {
       // Use the provided selectionDecoration
       final BoxPainter painter = selectionDecoration!.createBoxPainter();
-      painter.paint(canvas, Offset(rect.left, rect.top),
-          ImageConfiguration(size: Size(rect.width, rect.height)));
+      painter.paint(
+        canvas, Offset(rect.left, rect.top),
+        ImageConfiguration(size: Size(rect.width, rect.height)),
+      );
     } else {
       // Fallback to default border style
-      paintBorder(canvas, rect,
-          left:
-              BorderSide(color: calendarTheme.selectionBorderColor!, width: 2),
-          right:
-              BorderSide(color: calendarTheme.selectionBorderColor!, width: 2),
-          bottom:
-              BorderSide(color: calendarTheme.selectionBorderColor!, width: 2),
-          top:
-              BorderSide(color: calendarTheme.selectionBorderColor!, width: 2));
+      paintBorder(
+        canvas, 
+        rect,
+        left: BorderSide(color: calendarTheme.selectionBorderColor!, width: 2),
+        right: BorderSide(color: calendarTheme.selectionBorderColor!, width: 2),
+        bottom: BorderSide(color: calendarTheme.selectionBorderColor!, width: 2),
+        top: BorderSide(color: calendarTheme.selectionBorderColor!, width: 2)
+      );
     }
   }
 
@@ -15296,19 +15267,61 @@ class _DraggingAppointmentRenderObject extends RenderBox
   }
 }
 
-/// This class is used to paint the custom indicator in the calendar view.
-class _CustomPainter extends CustomPainter {
-  _CustomPainter(this.paintFunction);
+enum BorderRemoveMode {
+  top,
+  right,
+  bottom,
+  left,
+  horizontal,
+  vertical,
+}
 
-  final Function(Canvas canvas, Size size) paintFunction;
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    paintFunction(canvas, size);
-  }
-
-  @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) {
-    return true;
+/// Delete border sides based on [BorderRemoveMode]
+extension BorderRemoveX on Border {
+  Border removeSide(BorderRemoveMode mode) {
+    switch (mode) {
+      case BorderRemoveMode.top:
+        return Border(
+          top: BorderSide.none,
+          right: right,
+          bottom: bottom,
+          left: left,
+        );
+      case BorderRemoveMode.right:
+        return Border(
+          top: top,
+          right: BorderSide.none,
+          bottom: bottom,
+          left: left,
+        );
+      case BorderRemoveMode.bottom:
+        return Border(
+          top: top,
+          right: right,
+          bottom: BorderSide.none,
+          left: left,
+        );
+      case BorderRemoveMode.left:
+        return Border(
+          top: top,
+          right: right,
+          bottom: bottom,
+          left: BorderSide.none,
+        );
+      case BorderRemoveMode.horizontal:
+        return Border(
+          top: top,
+          right: BorderSide.none,
+          bottom: bottom,
+          left: BorderSide.none,
+        );
+      case BorderRemoveMode.vertical:
+        return Border(
+          top: BorderSide.none,
+          right: right,
+          bottom: BorderSide.none,
+          left: left,
+        );
+    }
   }
 }
