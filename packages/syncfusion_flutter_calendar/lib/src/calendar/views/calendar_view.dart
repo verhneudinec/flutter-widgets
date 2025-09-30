@@ -1081,13 +1081,13 @@ class _CustomCalendarScrollViewState extends State<CustomCalendarScrollView>
   }
 
   // Handle end of long press
-  void _handleEmptySpaceLongPressEnd(
+  Future<void> _handleEmptySpaceLongPressEnd(
       LongPressEndDetails details,
       _CalendarViewState currentState,
       bool isTimelineView,
       double viewHeaderHeight,
       double timeLabelWidth
-  ) {
+  ) async {
     longPressOnEmptySpace = false;
 
     final Offset localPosition = details.localPosition;
@@ -1096,7 +1096,11 @@ class _CustomCalendarScrollViewState extends State<CustomCalendarScrollView>
 
     if (selectedDateTime != null) {
       if (currentState.widget.calendar.onEmptySpaceLongPressEnd != null) {
-        currentState.widget.calendar.onEmptySpaceLongPressEnd!(currentState._selectedDateRangeStart!, currentState._selectedDateRangeEnd!);
+        // Await the completion of the Future before resetting the selection state
+        await currentState.widget.calendar.onEmptySpaceLongPressEnd!(
+          currentState._selectedDateRangeStart!, 
+          currentState._selectedDateRangeEnd!
+        );
       }
 
       // Reset the selection state

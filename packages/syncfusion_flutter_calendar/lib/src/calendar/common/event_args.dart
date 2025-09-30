@@ -495,7 +495,7 @@ typedef CalendarLongPressCallback = void Function(
 /// See also:
 /// * [SfCalendar.onEmptySpaceLongPressEnd], which matches this signature.
 /// * [SfCalendar], which uses this signature in one of it's callback.
-typedef EmptySpaceLongPressEndCallback = void Function(DateTime startTime, DateTime endTime);
+typedef EmptySpaceLongPressEndCallback = Future<void> Function(DateTime startTime, DateTime endTime);
 
 /// Signature for callback that reports that
 /// a calendar view selection changed on view.
