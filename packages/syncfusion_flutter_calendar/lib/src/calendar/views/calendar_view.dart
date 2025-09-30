@@ -27,6 +27,9 @@ import '../views/timeline_view.dart';
 /// All day appointment views default height
 const double _kAllDayLayoutHeight = 60;
 
+/// Default time interval in minutes for discrete resizing and time calculations
+const int _kMinTimeIntervalInMinutes = 5;
+
 /// Holds the looping widget for calendar view(time slot, month, timeline and
 /// appointment views) widgets of calendar widget.
 @immutable
@@ -1023,7 +1026,7 @@ class _CustomCalendarScrollViewState extends State<CustomCalendarScrollView>
         localPosition, currentState, isTimelineView, viewHeaderHeight, timeLabelWidth);
 
     if (selectedDateTime != null) {
-      final DateTime endDateTime = selectedDateTime.add(const Duration(minutes: 15));
+      final DateTime endDateTime = selectedDateTime.add(Duration(minutes: 15));
 
       currentState._selectionPainter!.selectedDate = null;
       currentState._selectedDateRangeStart = selectedDateTime;
@@ -1054,7 +1057,7 @@ class _CustomCalendarScrollViewState extends State<CustomCalendarScrollView>
       if (isReverseSelection) {
         return;
       }
-      
+
       final bool isSameDay = rangeEnd.day == rangeStart.day &&
           rangeEnd.month == rangeStart.month &&
           rangeEnd.year == rangeStart.year;
@@ -1062,9 +1065,9 @@ class _CustomCalendarScrollViewState extends State<CustomCalendarScrollView>
       // If the selected date range is not the same day, set the end date to the end of the day
       if (!isSameDay && widget.view != CalendarView.month) {
         final DateTime endOfDay = DateTime(
-          rangeStart.year, 
-          rangeStart.month, 
-          rangeStart.day, 
+          rangeStart.year,
+          rangeStart.month,
+          rangeStart.day,
           23, 59
         );
 
@@ -1096,11 +1099,18 @@ class _CustomCalendarScrollViewState extends State<CustomCalendarScrollView>
 
     if (selectedDateTime != null) {
       if (currentState.widget.calendar.onEmptySpaceLongPressEnd != null) {
-        // Await the completion of the Future before resetting the selection state
-        await currentState.widget.calendar.onEmptySpaceLongPressEnd!(
-          currentState._selectedDateRangeStart!, 
-          currentState._selectedDateRangeEnd!
-        );
+        if (widget.view == CalendarView.month) {
+          // Await the completion of the Future before resetting the selection state
+          await currentState.widget.calendar.onEmptySpaceLongPressEnd!(
+            _removeTime(currentState._selectedDateRangeStart!),
+            _removeTime(currentState._selectedDateRangeEnd!).add(Duration(days: 1))
+          );
+        } else {
+          await currentState.widget.calendar.onEmptySpaceLongPressEnd!(
+            currentState._selectedDateRangeStart!,
+            currentState._selectedDateRangeEnd!,
+          );
+        }
       }
 
       // Reset the selection state
@@ -1113,6 +1123,10 @@ class _CustomCalendarScrollViewState extends State<CustomCalendarScrollView>
 
       _updateCalendarState(currentState);
     }
+  }
+
+  DateTime _removeTime(DateTime dateTime) {
+    return DateTime(dateTime.year, dateTime.month, dateTime.day);
   }
 
   // Get date and time from position for month view
@@ -1143,7 +1157,7 @@ class _CustomCalendarScrollViewState extends State<CustomCalendarScrollView>
     // Calculate time with 15-minute precision
     final double cellProgress = (yPosition - (rowIndex * cellHeight)) / cellHeight;
     final int hour = (cellProgress * 24).floor();
-    final int minute = ((cellProgress * 24 * 60) % 60).floor() ~/ 15 * 15;
+    final int minute = ((cellProgress * 24 * 60) % 60).floor() ~/ _kMinTimeIntervalInMinutes * _kMinTimeIntervalInMinutes;
 
     return DateTime(date.year, date.month, date.day, hour, minute);
   }
@@ -1188,11 +1202,9 @@ class _CustomCalendarScrollViewState extends State<CustomCalendarScrollView>
     final int startMinutes = ((widget.calendar.timeSlotViewSettings.startHour - startHour) * 60).toInt();
 
     // Round to nearest 15 minutes
-    final int totalMinutes = startHour * 60 + startMinutes +
-                            ((yPosition / minuteHeight / 15).round() * 15);
+    final int totalMinutes = startHour * 60 + startMinutes + ((yPosition / minuteHeight / _kMinTimeIntervalInMinutes).round() * _kMinTimeIntervalInMinutes);
 
-    return DateTime(date.year, date.month, date.day,
-                   totalMinutes ~/ 60, totalMinutes % 60);
+    return DateTime(date.year, date.month, date.day, totalMinutes ~/ 60, totalMinutes % 60);
   }
 
   AppointmentView? _getDragAppointment(
@@ -8883,6 +8895,30 @@ class _CalendarViewState extends State<_CalendarView>
           this,
           timeIntervalHeight,
           false)!;
+          
+      // Round the time to the nearest 15-minute interval for discrete resizing
+      final int minute = (resizingTime.minute ~/ _kMinTimeIntervalInMinutes) * _kMinTimeIntervalInMinutes;
+      resizingTime = DateTime(
+          resizingTime.year,
+          resizingTime.month,
+          resizingTime.day,
+          resizingTime.hour,
+          minute);
+          
+      final double position = AppointmentHelper.timeToPosition(
+          widget.calendar, resizingTime, timeIntervalHeight,
+      );
+
+      updatedYPosition = viewHeaderHeight + allDayPanelHeight + position;
+      
+      final double scrollOffset = _scrollController?.offset ?? 0;
+      
+      // Update the visual position of the resizing element
+      if (_resizingDetails.value.position.value != null) {
+        _resizingDetails.value.position.value = Offset(
+            _resizingDetails.value.position.value!.dx,
+            updatedYPosition - scrollOffset);
+      }
     }
 
     _resizingDetails.value.resizingTime = resizingTime;
@@ -11845,7 +11881,7 @@ class _CalendarViewState extends State<_CalendarView>
 
     // Rounds the time to the nearest 15 minutes.
     final int totalMinutes = selectedDateTime.hour * 60 + selectedDateTime.minute;
-    final int roundedMinutes = ((totalMinutes / 15).round() * 15);
+    final int roundedMinutes = ((totalMinutes / _kMinTimeIntervalInMinutes).round() * _kMinTimeIntervalInMinutes);
     final int roundedHour = roundedMinutes ~/ 60;
     final int roundedMinute = roundedMinutes % 60;
 
@@ -13059,7 +13095,7 @@ class _SelectionPainter extends CustomPainter {
 
     final DateTime updatedStart = _updateTimeToSlot(selectedRangeStart);
     final DateTime updatedEnd = _updateTimeToSlot(selectedRangeEnd);
-    
+
     final double startYPosition = AppointmentHelper.timeToPosition(calendar, updatedStart, timeIntervalHeight);
     final double endYPosition = AppointmentHelper.timeToPosition(calendar, updatedEnd, timeIntervalHeight);
 
@@ -13067,7 +13103,7 @@ class _SelectionPainter extends CustomPainter {
 
     final Offset startPosition = Offset(0, startYPosition);
     final Offset endPosition = Offset(0, endYPosition);
-    
+
     // Draw the time indicator for the start time.
     _drawTimeIndicator(
       canvas,
@@ -13086,7 +13122,7 @@ class _SelectionPainter extends CustomPainter {
     );
 
     // Draw the time indicator for the end time, if there is enough distance.
-    if (endYPosition - startYPosition > 15) {
+    if (endYPosition - startYPosition > _kMinTimeIntervalInMinutes) {
       _drawTimeIndicator(
         canvas,
         size,
@@ -13177,12 +13213,10 @@ class _SelectionPainter extends CustomPainter {
   /// based on the configured time interval. If the time is within the
   /// middle of the interval, it rounds up.
   DateTime _updateTimeToSlot(DateTime dateTime) {
-    const int timeInterval = 15;
+    const int timeInterval = _kMinTimeIntervalInMinutes;
     final int startHour = calendar.timeSlotViewSettings.startHour.toInt();
-    final double startMinute = (calendar.timeSlotViewSettings.startHour -
-            calendar.timeSlotViewSettings.startHour.toInt()) * 60;
-    final int selectedMinutes = ((dateTime.hour - startHour) * 60) +
-        (dateTime.minute - startMinute.toInt());
+    final double startMinute = (calendar.timeSlotViewSettings.startHour - calendar.timeSlotViewSettings.startHour.toInt()) * 60;
+    final int selectedMinutes = ((dateTime.hour - startHour) * 60) + (dateTime.minute - startMinute.toInt());
 
     if (selectedMinutes % timeInterval != 0) {
       final int diff = selectedMinutes % timeInterval;
@@ -13274,10 +13308,10 @@ class _SelectionPainter extends CustomPainter {
     final double endY = AppointmentHelper.timeToPosition(calendar, updatedEnd, timeIntervalHeight);
 
     _drawTimeRangeSelection(canvas, size, _cellWidth, startY, endY);
-    
+
     final Offset startPosition = Offset(_xPosition, startY);
     final Offset endPosition = Offset(_xPosition, endY);
-    
+
     // Start time indicator
     _drawTimeIndicator(
       canvas,
@@ -13296,7 +13330,7 @@ class _SelectionPainter extends CustomPainter {
     );
 
     // End time indicator
-    if (endY - startY > 15) {
+    if (endY - startY > _kMinTimeIntervalInMinutes) {
       _drawTimeIndicator(
         canvas,
         size,
@@ -13996,12 +14030,17 @@ DateTime? _timeFromPosition(
     double totalHour = positionY / singleIntervalHeightForAnHour;
     totalHour += startHour;
     int hour = totalHour.toInt();
-    final int minute = ((totalHour - hour) * 60).round();
+
+    // Round the minute to the nearest 15-minute interval
+    final int originalMinute = ((totalHour - hour) * 60).round();
+    final int minute = (originalMinute ~/ _kMinTimeIntervalInMinutes) * _kMinTimeIntervalInMinutes;
+
     if (isTimelineView) {
       while (hour >= endHour) {
         hour = ((hour - endHour) + startHour).toInt();
       }
     }
+
     return DateTime(date.year, date.month, date.day, hour, minute);
   }
 
@@ -14377,7 +14416,7 @@ class _ResizingAppointmentPainter extends CustomPainter {
     } else {
       // Fallback to default border style
       paintBorder(
-        canvas, 
+        canvas,
         rect,
         left: BorderSide(color: calendarTheme.selectionBorderColor!, width: 2),
         right: BorderSide(color: calendarTheme.selectionBorderColor!, width: 2),
