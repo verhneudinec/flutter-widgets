@@ -1047,17 +1047,10 @@ class _CustomCalendarScrollViewState extends State<CustomCalendarScrollView>
 
     final Offset localPosition = details.localPosition;
     final DateTime rangeStart = currentState._selectedDateRangeStart!;
-    final DateTime? rangeEnd = _getSelectedDateTimeFromPosition(
+    DateTime? rangeEnd = _getSelectedDateTimeFromPosition(
         localPosition, currentState, isTimelineView, viewHeaderHeight, timeLabelWidth);
 
     if (rangeStart != null && rangeEnd != null) {
-      final bool isReverseSelection = rangeEnd.isBefore(rangeStart);
-
-      // Dont do reverse selection
-      if (isReverseSelection) {
-        return;
-      }
-
       final bool isSameDay = rangeEnd.day == rangeStart.day &&
           rangeEnd.month == rangeStart.month &&
           rangeEnd.year == rangeStart.year;
@@ -1071,15 +1064,15 @@ class _CustomCalendarScrollViewState extends State<CustomCalendarScrollView>
           23, 59
         );
 
-        currentState._selectedDateRangeEnd = endOfDay;
-      } else {
-        currentState._selectedDateRangeEnd = rangeEnd;
+        rangeEnd = endOfDay;
+      } else if (rangeEnd.isBefore(rangeStart) || rangeEnd.difference(rangeStart).inMinutes < 15) {
+        rangeEnd = rangeStart.add(Duration(minutes: _kMinTimeIntervalInMinutes));
       }
+
+      currentState._selectedDateRangeEnd = rangeEnd;
     }
 
-    currentState._selectionPainter!.repaintNotifier.value =
-        !currentState._selectionPainter!.repaintNotifier.value;
-
+    currentState._selectionPainter!.repaintNotifier.value = !currentState._selectionPainter!.repaintNotifier.value;
     _updateCalendarState(currentState);
   }
 
