@@ -1025,8 +1025,6 @@ class _CustomCalendarScrollViewState extends State<CustomCalendarScrollView>
     if (selectedDateTime != null) {
       final DateTime endDateTime = selectedDateTime.add(const Duration(minutes: 15));
 
-      currentState._selectionPainter!.selectedRangeStart = selectedDateTime;
-      currentState._selectionPainter!.selectedRangeEnd = endDateTime;
       currentState._selectionPainter!.selectedDate = null;
       currentState._selectedDateRangeStart = selectedDateTime;
       currentState._selectedDateRangeEnd = endDateTime;
@@ -1045,18 +1043,24 @@ class _CustomCalendarScrollViewState extends State<CustomCalendarScrollView>
     ) {
 
     final Offset localPosition = details.localPosition;
-    final DateTime rangeStart = currentState._selectionPainter!.selectedRangeStart!;
+    final DateTime rangeStart = currentState._selectedDateRangeStart!;
     final DateTime? rangeEnd = _getSelectedDateTimeFromPosition(
         localPosition, currentState, isTimelineView, viewHeaderHeight, timeLabelWidth);
 
     if (rangeStart != null && rangeEnd != null) {
-      final isSameDay = rangeEnd.day == rangeStart.day &&
+      final bool isReverseSelection = rangeEnd.isBefore(rangeStart);
+
+      // Dont do reverse selection
+      if (isReverseSelection) {
+        return;
+      }
+      
+      final bool isSameDay = rangeEnd.day == rangeStart.day &&
           rangeEnd.month == rangeStart.month &&
           rangeEnd.year == rangeStart.year;
 
-      // Check if the selected date is in the same day as the start date
+      // If the selected date range is not the same day, set the end date to the end of the day
       if (!isSameDay && widget.view != CalendarView.month) {
-        // Если да, устанавливаем конечную дату на конец текущего дня
         final DateTime endOfDay = DateTime(
           rangeStart.year, 
           rangeStart.month, 
@@ -1064,18 +1068,16 @@ class _CustomCalendarScrollViewState extends State<CustomCalendarScrollView>
           23, 59
         );
 
-        currentState._selectionPainter!.selectedRangeEnd = endOfDay;
         currentState._selectedDateRangeEnd = endOfDay;
       } else {
-        currentState._selectionPainter!.selectedRangeEnd = rangeEnd;
         currentState._selectedDateRangeEnd = rangeEnd;
       }
-
-      currentState._selectionPainter!.repaintNotifier.value =
-          !currentState._selectionPainter!.repaintNotifier.value;
-
-      _updateCalendarState(currentState);
     }
+
+    currentState._selectionPainter!.repaintNotifier.value =
+        !currentState._selectionPainter!.repaintNotifier.value;
+
+    _updateCalendarState(currentState);
   }
 
   // Handle end of long press
@@ -12768,8 +12770,8 @@ class _SelectionPainter extends CustomPainter {
   final List<DateTime> visibleDates;
   Decoration? selectionDecoration;
   DateTime? selectedDate;
-  DateTime? selectedRangeStart;
-  DateTime? selectedRangeEnd;
+  final DateTime? selectedRangeStart;
+  final DateTime? selectedRangeEnd;
   final double timeIntervalHeight;
   final bool isRTL;
   final UpdateCalendarState getCalendarState;
@@ -12948,7 +12950,7 @@ class _SelectionPainter extends CustomPainter {
           }
 
           // If there is a date range (selectedDate and selectedRangeEnd),
-          if (selectedRangeEnd != null) {
+          if (selectedRangeStart != null && selectedRangeEnd != null) {
             _drawMonthRangeSelection(canvas, size, width);
             return;
           }
@@ -12963,8 +12965,8 @@ class _SelectionPainter extends CustomPainter {
   // Draws the selection range for the month view.
   void _drawMonthRangeSelection(Canvas canvas, Size size, double width) {
     final int visibleDatesLength = visibleDates.length;
-    final DateTime startDate = selectedRangeStart ?? selectedDate!;
-    final DateTime endDate = selectedRangeEnd ?? selectedDate!;
+    final DateTime startDate = selectedRangeStart!;
+    final DateTime endDate = selectedRangeEnd!;
 
     final double weekNumberPanelWidth =
         CalendarViewHelper.getWeekNumberPanelWidth(
