@@ -288,6 +288,12 @@ class _CustomCalendarScrollViewState extends State<CustomCalendarScrollView>
 
   bool longPressOnEmptySpace = false;
 
+  // Variables for controlling the drag threshold
+  Offset? _longPressStartPosition;
+  bool _isDragThresholdReached = false;
+  AppointmentView? _pendingDragAppointment;
+  static const double _dragThreshold = 50.0;
+
   @override
   void initState() {
     _appointmentAnimationController = AnimationController(
@@ -966,6 +972,11 @@ class _CustomCalendarScrollViewState extends State<CustomCalendarScrollView>
       return;
     }
 
+    // Saving the initial position to track the drag threshold
+    _longPressStartPosition = details.localPosition;
+    _isDragThresholdReached = false;
+    _pendingDragAppointment = appointmentView.clone();
+
     // Reset the flag when the finger is lifted at the start of a long press
     currentState._isFingerLifted = false;
     currentState._isResizeMode = false;
@@ -976,14 +987,9 @@ class _CustomCalendarScrollViewState extends State<CustomCalendarScrollView>
     }
 
     currentState._removeAllWidgetHovering();
-    appointmentView = appointmentView.clone();
-    _handleAppointmentDragStart(
-        appointmentView,
-        isTimelineView,
-        details.localPosition,
-        isResourceEnabled,
-        viewHeaderHeight,
-        timeLabelWidth);
+    
+    // Do NOT start dragging immediately — wait until the threshold is reached
+    // _handleAppointmentDragStart will be called in _handleLongPressMove once the threshold is reached
   }
 
   // Handle long tap on empty calendar space
@@ -1221,6 +1227,27 @@ class _CustomCalendarScrollViewState extends State<CustomCalendarScrollView>
       double timeLabelWidth,
       double resourceItemHeight,
       double weekNumberPanelWidth) {
+    
+    // Checking the drag threshold, if it hasn’t been reached yet
+    if (!_isDragThresholdReached && _longPressStartPosition != null && _pendingDragAppointment != null) {
+      final double distance = (details - _longPressStartPosition!).distance;
+      
+      if (distance >= _dragThreshold) {
+        // Threshold reached - start dragging
+        _isDragThresholdReached = true;
+        _handleAppointmentDragStart(
+            _pendingDragAppointment!,
+            isTimelineView,
+            _longPressStartPosition!,
+            isResourceEnabled,
+            viewHeaderHeight,
+            timeLabelWidth);
+      } else {
+        // Threshold not reached - do not handle dragging yet
+        return;
+      }
+    }
+    
     if (_dragDetails.value.appointmentView == null) {
       return;
     }
@@ -2257,6 +2284,12 @@ class _CustomCalendarScrollViewState extends State<CustomCalendarScrollView>
       double viewHeaderHeight,
       double timeLabelWidth,
       double weekNumberPanelWidth) {
+    
+    // Resetting the drag threshold state
+    _longPressStartPosition = null;
+    _isDragThresholdReached = false;
+    _pendingDragAppointment = null;
+    
     if (_dragDetails.value.appointmentView == null) {
       return;
     }
