@@ -984,6 +984,27 @@ class _CustomCalendarScrollViewState extends State<CustomCalendarScrollView>
     // Save the current meeting for future interaction
     if (appointmentView.appointment != null) {
       currentState._interactingAppointment = appointmentView.appointment;
+      
+      // Activate task selection when long press starts
+      // Set the selected task
+      currentState._selectedAppointmentView = appointmentView;
+      
+      // Refresh painter for selection displaying
+      if (currentState._selectionPainter != null) {
+        currentState._selectionPainter!.appointmentView = appointmentView;
+        currentState._selectionNotifier.value = !currentState._selectionNotifier.value;
+      }
+
+      currentState._isResizeMode = true;
+      
+      // Reset the date selection if it was previously selected
+      if (currentState._selectionPainter != null) {
+        currentState._selectionPainter!.selectedDate = null;
+      }
+      currentState._updateCalendarStateDetails.selectedDate = null;
+      
+      // Forcefully update the state to display resize handles
+      currentState.setState(() {});
     }
 
     currentState._removeAllWidgetHovering();
@@ -1254,10 +1275,13 @@ class _CustomCalendarScrollViewState extends State<CustomCalendarScrollView>
 
     final _CalendarViewState currentState = _getCurrentViewByVisibleDates()!;
 
-    // If the finger was lifted and we are in resize mode, do not handle the drag operation
-    if (currentState._isFingerLifted && currentState._isResizeMode) {
+    // Fix: Separate resize logic and drag-and-drop
+    // Block only drag operations if the finger is lifted, but NOT in resize mode
+    if (currentState._isFingerLifted && !currentState._isResizeMode) {
       return;
     }
+    
+    // If resize mode is active, allow it to work regardless of finger state
 
     final Offset appointmentPosition = details + _dragDifferenceOffset!;
     final double allDayHeight = currentState._isExpanded
@@ -7245,6 +7269,18 @@ class _CalendarViewState extends State<_CalendarView>
       } else {
         appointmentView = _appointmentLayout.getAppointmentViewOnPoint(xPosition, yPosition);
       }
+      if (appointmentView == null && _selectedAppointmentView == null) {
+        _selectionPainter = null;
+        _isResizeMode = false;
+        return;
+      }
+
+      // Use selected appointment if no appointment found at touch point
+      if (appointmentView == null && _selectedAppointmentView != null) {
+        appointmentView = _selectedAppointmentView!;
+      }
+
+      // Final check - if still no appointment, return
       if (appointmentView == null) {
         _selectionPainter = null;
         _isResizeMode = false;
@@ -7257,13 +7293,31 @@ class _CalendarViewState extends State<_CalendarView>
           allDayPanelHeight +
           _scrollController!.offset;
 
-      // Check that the cursor is set for resizing (up or down)
-      if (isForwardResize || isBackwardResize) {
+      // Check that the cursor is set for resizing (up or down) OR appointment is already selected
+      if (isForwardResize || isBackwardResize || _selectedAppointmentView != null) {
         _resizingDetails.value.appointmentView = appointmentView.clone();
+
+        // If appointment is selected but resize direction not set, determine it based on touch position
+        if (!isForwardResize && !isBackwardResize && _selectedAppointmentView != null) {
+          final double appointmentTop = appointmentView.appointmentRect!.top;
+          final double appointmentBottom = appointmentView.appointmentRect!.bottom;
+          final double appointmentHeight = appointmentBottom - appointmentTop;
+          
+          if (yPosition > appointmentTop + appointmentHeight / 2) {
+            isForwardResize = true;
+            _mouseCursor = SystemMouseCursors.resizeDown;
+          } else {
+            isBackwardResize = true;
+            _mouseCursor = SystemMouseCursors.resizeUp;
+          }
+        }
 
         // Set flags for resizing
         _resizingDetails.value.isForwardResize = isForwardResize;
         _resizingDetails.value.isBackwardResize = isBackwardResize;
+        
+        // Activate resize mode
+        _isResizeMode = true;
       } else {
         appointmentView = null;
         return;
@@ -9086,7 +9140,7 @@ class _CalendarViewState extends State<_CalendarView>
     bool isVerticalResize = _mouseCursor == SystemMouseCursors.resizeUp ||
         _mouseCursor == SystemMouseCursors.resizeDown;
 
-    if (widget.isMobilePlatform && _resizingDetails != null) {
+    if (widget.isMobilePlatform && (_resizingDetails != null || _isResizeMode)) {
       isVerticalResize = true;
     }
 
