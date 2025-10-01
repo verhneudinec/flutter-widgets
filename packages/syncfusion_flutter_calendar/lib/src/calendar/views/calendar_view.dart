@@ -5805,7 +5805,7 @@ class _CustomCalendarScrollViewState extends State<CustomCalendarScrollView>
       final GlobalKey<_CalendarViewState> viewKey =
           // ignore: avoid_as
           _children[i].key! as GlobalKey<_CalendarViewState>;
-      if (viewKey.currentState!._selectionPainter!.selectedDate !=
+      if (viewKey.currentState?._selectionPainter != null && viewKey.currentState!._selectionPainter!.selectedDate !=
           _updateCalendarStateDetails.selectedDate) {
         viewKey.currentState!._selectionPainter!.selectedDate =
             _updateCalendarStateDetails.selectedDate;
@@ -7177,40 +7177,19 @@ class _CalendarViewState extends State<_CalendarView>
         // First try to find the appointment at the exact touch point
         appointmentView = _appointmentLayout.getAppointmentViewOnPoint(xPosition, yPosition);
 
+        // 55% of _timeIntervalHeight
+        final double resizeArea = _timeIntervalHeight * 0.55;
 
         // If not found, try with larger offsets up and down
-        if (appointmentView == null) {
-          appointmentView = _appointmentLayout.getAppointmentViewOnPoint(xPosition, yPosition - 30);
-        }
-
-        if (appointmentView == null) {
-          appointmentView = _appointmentLayout.getAppointmentViewOnPoint(xPosition, yPosition + 30);
-        }
-
-        // If still not found, expand search area
-        if (appointmentView == null) {
-          // Check area around touch point with larger radius
-          for (int offsetY = -60; offsetY <= 60; offsetY += 20) {
-            for (int offsetX = -20; offsetX <= 20; offsetX += 10) {
-              appointmentView = _appointmentLayout.getAppointmentViewOnPoint(xPosition + offsetX, yPosition + offsetY);
-              if (appointmentView != null) {
-                break;
-              }
-            }
-            if (appointmentView != null) break;
-          }
-        }
+        appointmentView ??= _appointmentLayout.getAppointmentViewOnPoint(xPosition, yPosition - resizeArea);
+        appointmentView ??= _appointmentLayout.getAppointmentViewOnPoint(xPosition, yPosition + resizeArea);
 
         // If found an appointment, determine resize type based on touch point
         if (appointmentView != null) {
-          final double touchPosition = details.localPosition.dy;
           final double appointmentTop = appointmentView.appointmentRect!.top;
           final double appointmentBottom = appointmentView.appointmentRect!.bottom;
-          final double appointmentCenterX = appointmentView.appointmentRect!.left +
-              appointmentView.appointmentRect!.width / 2;
 
           final double appointmentHeight = appointmentBottom - appointmentTop;
-          final double resizeAreaHeight = min(appointmentHeight * 0.3, 15.0);
 
           // Determine which part of the meeting was touched
           // Use the coordinates of the found meeting, not the touch coordinates
@@ -8888,7 +8867,7 @@ class _CalendarViewState extends State<_CalendarView>
           this,
           timeIntervalHeight,
           false)!;
-          
+
       // Round the time to the nearest 15-minute interval for discrete resizing
       final int minute = (resizingTime.minute ~/ _kMinTimeIntervalInMinutes) * _kMinTimeIntervalInMinutes;
       resizingTime = DateTime(
@@ -8897,15 +8876,15 @@ class _CalendarViewState extends State<_CalendarView>
           resizingTime.day,
           resizingTime.hour,
           minute);
-          
+
       final double position = AppointmentHelper.timeToPosition(
           widget.calendar, resizingTime, timeIntervalHeight,
       );
 
       updatedYPosition = viewHeaderHeight + allDayPanelHeight + position;
-      
+
       final double scrollOffset = _scrollController?.offset ?? 0;
-      
+
       // Update the visual position of the resizing element
       if (_resizingDetails.value.position.value != null) {
         _resizingDetails.value.position.value = Offset(
@@ -11365,10 +11344,10 @@ class _CalendarViewState extends State<_CalendarView>
     } else {
 
       // Expand resize area on mobile
-      final double mobileResizeArea = widget.isMobilePlatform ? padding * 3 : padding;
+      final double resizeArea = padding;
 
       if (yPosition >= appointmentView.appointmentRect!.top &&
-          yPosition <= appointmentView.appointmentRect!.top + mobileResizeArea &&
+          yPosition <= appointmentView.appointmentRect!.top + resizeArea &&
           (widget.isMobilePlatform || CalendarViewHelper.isSameTimeSlot(
               appointmentView.appointment!.actualStartTime,
               appointmentView.appointment!.exactStartTime))) {
@@ -11376,7 +11355,7 @@ class _CalendarViewState extends State<_CalendarView>
           _mouseCursor = SystemMouseCursors.resizeUp;
         });
       } else if (yPosition <= appointmentView.appointmentRect!.bottom &&
-          yPosition >= appointmentView.appointmentRect!.bottom - mobileResizeArea &&
+          yPosition >= appointmentView.appointmentRect!.bottom - resizeArea &&
           (widget.isMobilePlatform || CalendarViewHelper.isSameTimeSlot(
               appointmentView.appointment!.actualEndTime,
               appointmentView.appointment!.exactEndTime))) {
