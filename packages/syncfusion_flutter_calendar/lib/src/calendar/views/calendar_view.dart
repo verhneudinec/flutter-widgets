@@ -292,7 +292,8 @@ class _CustomCalendarScrollViewState extends State<CustomCalendarScrollView>
   Offset? _longPressStartPosition;
   bool _isDragThresholdReached = false;
   AppointmentView? _pendingDragAppointment;
-  static const double _dragThreshold = 50.0;
+
+  static final double _dragThreshold = 3.5;
 
   @override
   void initState() {
