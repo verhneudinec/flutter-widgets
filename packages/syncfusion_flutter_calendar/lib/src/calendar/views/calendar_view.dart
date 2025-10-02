@@ -12,6 +12,7 @@ import 'package:syncfusion_flutter_core/core.dart';
 import 'package:syncfusion_flutter_core/core_internal.dart';
 import 'package:syncfusion_flutter_core/localizations.dart';
 import 'package:syncfusion_flutter_core/theme.dart';
+import 'package:vibration/vibration.dart';
 
 import '../../../calendar.dart';
 import '../appointment_engine/appointment_helper.dart';
@@ -12868,7 +12869,7 @@ class _SelectionPainter extends CustomPainter {
   final CalendarView view;
   final SfCalendarThemeData calendarTheme;
   final List<DateTime> visibleDates;
-  Decoration? selectionDecoration;
+  final Decoration? selectionDecoration;
   DateTime? selectedDate;
   final DateTime? selectedRangeStart;
   final DateTime? selectedRangeEnd;
@@ -12890,18 +12891,14 @@ class _SelectionPainter extends CustomPainter {
   final bool showWeekNumber;
   final bool isMobilePlatform;
 
-  BoxDecoration get _selectionDecoration => BoxDecoration(
-    color: calendarTheme.selectionBorderColor!.withOpacity(0.2),
-    border: _selectionBorder,
-    borderRadius: const BorderRadius.all(Radius.circular(2)),
-  );
+  BoxDecoration get _selectionDecoration => selectionDecoration != null 
+      ? selectionDecoration as BoxDecoration
+      : BoxDecoration();
 
-  Border get _selectionBorder => Border.all(color: calendarTheme.selectionBorderColor!, width: 2);
+  Border get _selectionBorder => (_selectionDecoration.border as Border?) ?? Border.all(color: calendarTheme.selectionBorderColor!, width: 2);
 
   @override
   void paint(Canvas canvas, Size size) {
-    selectionDecoration ??= _selectionDecoration;
-
     getCalendarState(_updateCalendarStateDetails);
 
     final bool isDayView = CalendarViewHelper.isDayView(
