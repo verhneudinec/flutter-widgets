@@ -13169,7 +13169,7 @@ class _SelectionPainter extends CustomPainter {
     final double startYPosition = AppointmentHelper.timeToPosition(calendar, updatedStart, timeIntervalHeight);
     final double endYPosition = AppointmentHelper.timeToPosition(calendar, updatedEnd, timeIntervalHeight);
 
-    _drawTimeRangeSelection(canvas, size, width + timeLabelWidth, startYPosition, endYPosition);
+    _drawTimeRangeSelection(canvas, size, width, startYPosition, endYPosition);
 
     final Offset startPosition = Offset(0, startYPosition);
     final Offset endPosition = Offset(0, endYPosition);
