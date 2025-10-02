@@ -1226,7 +1226,12 @@ class _CustomCalendarScrollViewState extends State<CustomCalendarScrollView>
     // Round to nearest 15 minutes
     final int totalMinutes = startHour * 60 + startMinutes + ((yPosition / minuteHeight / _kMinTimeIntervalInMinutes).round() * _kMinTimeIntervalInMinutes);
 
-    return DateTime(date.year, date.month, date.day, totalMinutes ~/ 60, totalMinutes % 60);
+    // Trigger vibration when crossing 5-minute intervals during task creation
+    final int hour = totalMinutes ~/ 60;
+    final int minute = totalMinutes % 60;
+    _triggerIntervalVibrationIfNeeded(currentState, hour, minute);
+
+    return DateTime(date.year, date.month, date.day, hour, minute);
   }
 
   AppointmentView? _getDragAppointment(
@@ -6058,6 +6063,9 @@ class _CalendarViewState extends State<_CalendarView>
   /// Flag indicating that panning has started
   bool _isPanStarted = false;
 
+  /// Variable to track previous time interval for vibration control
+  int? _lastIntervalForVibration;
+
   /// Flag indicating that panning has ended
   bool _isPanEnded = false;
 
@@ -8957,14 +8965,19 @@ class _CalendarViewState extends State<_CalendarView>
           timeIntervalHeight,
           false)!;
 
-      // Round the time to the nearest 15-minute interval for discrete resizing
-      final int minute = (resizingTime.minute ~/ _kMinTimeIntervalInMinutes) * _kMinTimeIntervalInMinutes;
+      // Round the time to the nearest 5-minute interval for discrete resizing
+      final int intervalMinutes = (resizingTime.minute ~/ _kMinTimeIntervalInMinutes) * _kMinTimeIntervalInMinutes;
+      
+      // Trigger vibration only when crossing interval boundaries
+      _triggerIntervalVibrationIfNeeded(this, resizingTime.hour, intervalMinutes);
+      
       resizingTime = DateTime(
           resizingTime.year,
           resizingTime.month,
           resizingTime.day,
           resizingTime.hour,
-          minute);
+          intervalMinutes
+      );
 
       final double position = AppointmentHelper.timeToPosition(
           widget.calendar, resizingTime, timeIntervalHeight,
@@ -14088,9 +14101,14 @@ DateTime? _timeFromPosition(
     totalHour += startHour;
     int hour = totalHour.toInt();
 
-    // Round the minute to the nearest 15-minute interval
-    final int originalMinute = ((totalHour - hour) * 60).round();
-    final int minute = (originalMinute ~/ _kMinTimeIntervalInMinutes) * _kMinTimeIntervalInMinutes;
+    // Round the minute to the nearest 5-minute interval
+    final int roundedMinute = ((totalHour - hour) * 60).round();
+    final int intervalMinute = (roundedMinute ~/ _kMinTimeIntervalInMinutes) * _kMinTimeIntervalInMinutes;
+    
+    // Trigger vibration only when crossing interval boundaries
+    if (currentState != null) {
+      _triggerIntervalVibrationIfNeeded(currentState, hour, intervalMinute);
+    }
 
     if (isTimelineView) {
       while (hour >= endHour) {
@@ -14098,7 +14116,7 @@ DateTime? _timeFromPosition(
       }
     }
 
-    return DateTime(date.year, date.month, date.day, hour, minute);
+    return DateTime(date.year, date.month, date.day, hour, intervalMinute);
   }
 
   return DateTime(date.year, date.month, date.day);
@@ -14109,6 +14127,26 @@ double _getSingleViewWidthForTimeLineView(_CalendarViewState viewState) {
   return (viewState._scrollController!.position.maxScrollExtent +
           viewState._scrollController!.position.viewportDimension) /
       viewState.widget.visibleDates.length;
+}
+
+/// Triggers vibration when resizing or dragging appointments
+Future<void> _triggerIntervalVibrationIfNeeded(_CalendarViewState state, int intervalHour, int intervalMinute) async {
+  // Calculate current time interval (in 5-minute blocks from start of day)
+  final int currentInterval = (intervalHour * 60 + intervalMinute) ~/ _kMinTimeIntervalInMinutes;
+  
+  if (state._lastIntervalForVibration != null && state._lastIntervalForVibration != currentInterval) {
+    try {
+      final bool hasVibrator = await Vibration.hasVibrator();
+
+      if (hasVibrator) {
+        await Vibration.vibrate(duration: 30, amplitude: 10);
+      }
+    } catch (e) {
+      // Do nothing
+    }
+  }
+
+  state._lastIntervalForVibration = currentInterval;
 }
 
 class _ResizingPaintDetails {
