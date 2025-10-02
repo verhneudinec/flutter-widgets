@@ -1161,14 +1161,15 @@ class _CustomCalendarScrollViewState extends State<CustomCalendarScrollView>
 
     final double yPosition = position.dy - viewHeaderHeight;
     final double cellWidth = widget.width / DateTime.daysPerWeek;
-    final double cellHeight = (widget.height - viewHeaderHeight) / 6;
+    final int numberOfWeeks = currentState.widget.calendar.monthViewSettings.numberOfWeeksInView;
+    final double cellHeight = (widget.height - viewHeaderHeight) / numberOfWeeks;
 
     // Get cell indices
     final int rowIndex = (yPosition / cellHeight).truncate();
     final int columnIndex = (position.dx / cellWidth).truncate();
 
     // Validate cell bounds
-    if (rowIndex < 0 || rowIndex >= 6 || columnIndex < 0 || columnIndex >= 7) return null;
+    if (rowIndex < 0 || rowIndex >= numberOfWeeks || columnIndex < 0 || columnIndex >= 7) return null;
 
     // Get date from visible dates
     final int dateIndex = (rowIndex * 7) + columnIndex;
