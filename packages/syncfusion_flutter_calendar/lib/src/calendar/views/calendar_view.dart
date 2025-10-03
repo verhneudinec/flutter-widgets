@@ -7247,6 +7247,8 @@ class _CalendarViewState extends State<_CalendarView>
 
       // Enlarge search area on mobile
       if (widget.isMobilePlatform) {
+        final selectionAppointmentId = _selectionPainter?.appointmentView?.appointment?.id;
+
         // First try to find the appointment at the exact touch point
         appointmentView = _appointmentLayout.getAppointmentViewOnPoint(xPosition, yPosition);
 
@@ -7256,6 +7258,11 @@ class _CalendarViewState extends State<_CalendarView>
         // If not found, try with larger offsets up and down
         appointmentView ??= _appointmentLayout.getAppointmentViewOnPoint(xPosition, yPosition - resizeArea);
         appointmentView ??= _appointmentLayout.getAppointmentViewOnPoint(xPosition, yPosition + resizeArea);
+
+        // Reset the appointment if it has a different id than the selected one
+        if (appointmentView?.appointment?.id != selectionAppointmentId) {
+          appointmentView = null;
+        }
 
         // If found an appointment, determine resize type based on touch point
         if (appointmentView != null) {
