@@ -6267,6 +6267,7 @@ class _CalendarViewState extends State<_CalendarView>
             oldWidget.height != widget.height) &&
         _selectionPainter!.appointmentView != null) {
       _selectionPainter!.appointmentView = null;
+      _clearSelection();
     }
 
     /// When view switched from any other view to timeline view, and resource
@@ -6421,13 +6422,17 @@ class _CalendarViewState extends State<_CalendarView>
 
   void _calendarValueChangedListener(String property) {
     if (property == 'clearSelection') {
-      setState(() {
-        _selectionPainter = null;
-        _isResizeMode = false;
-        _isPanStarted = false;
-        _selectedAppointmentView = null;
-      });
+      _clearSelection();
     }
+  }
+  
+  void _clearSelection() {
+    setState(() {
+      _selectionPainter = null;
+      _isResizeMode = false;
+      _isPanStarted = false;
+      _selectedAppointmentView = null;
+    });
   }
 
   /// Updates the timeline view scroll in vertical direction based on resource
