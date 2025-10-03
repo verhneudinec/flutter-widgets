@@ -986,11 +986,11 @@ class _CustomCalendarScrollViewState extends State<CustomCalendarScrollView>
     // Save the current meeting for future interaction
     if (appointmentView.appointment != null) {
       currentState._interactingAppointment = appointmentView.appointment;
-      
+
       // Activate task selection when long press starts
       // Set the selected task
       currentState._selectedAppointmentView = appointmentView;
-      
+
       // Refresh painter for selection displaying
       if (currentState._selectionPainter != null) {
         currentState._selectionPainter!.appointmentView = appointmentView;
@@ -998,19 +998,19 @@ class _CustomCalendarScrollViewState extends State<CustomCalendarScrollView>
       }
 
       currentState._isResizeMode = true;
-      
+
       // Reset the date selection if it was previously selected
       if (currentState._selectionPainter != null) {
         currentState._selectionPainter!.selectedDate = null;
       }
       currentState._updateCalendarStateDetails.selectedDate = null;
-      
+
       // Forcefully update the state to display resize handles
       currentState.setState(() {});
     }
 
     currentState._removeAllWidgetHovering();
-    
+
     // Do NOT start dragging immediately — wait until the threshold is reached
     // _handleAppointmentDragStart will be called in _handleLongPressMove once the threshold is reached
   }
@@ -1256,11 +1256,11 @@ class _CustomCalendarScrollViewState extends State<CustomCalendarScrollView>
       double timeLabelWidth,
       double resourceItemHeight,
       double weekNumberPanelWidth) {
-    
+
     // Checking the drag threshold, if it hasn’t been reached yet
     if (!_isDragThresholdReached && _longPressStartPosition != null && _pendingDragAppointment != null) {
       final double distance = (details - _longPressStartPosition!).distance;
-      
+
       if (distance >= _dragThreshold) {
         // Threshold reached - start dragging
         _isDragThresholdReached = true;
@@ -1276,7 +1276,7 @@ class _CustomCalendarScrollViewState extends State<CustomCalendarScrollView>
         return;
       }
     }
-    
+
     if (_dragDetails.value.appointmentView == null) {
       return;
     }
@@ -1288,7 +1288,7 @@ class _CustomCalendarScrollViewState extends State<CustomCalendarScrollView>
     if (currentState._isFingerLifted && !currentState._isResizeMode) {
       return;
     }
-    
+
     // If resize mode is active, allow it to work regardless of finger state
 
     final Offset appointmentPosition = details + _dragDifferenceOffset!;
@@ -2316,12 +2316,12 @@ class _CustomCalendarScrollViewState extends State<CustomCalendarScrollView>
       double viewHeaderHeight,
       double timeLabelWidth,
       double weekNumberPanelWidth) {
-    
+
     // Resetting the drag threshold state
     _longPressStartPosition = null;
     _isDragThresholdReached = false;
     _pendingDragAppointment = null;
-    
+
     if (_dragDetails.value.appointmentView == null) {
       return;
     }
@@ -7277,9 +7277,8 @@ class _CalendarViewState extends State<_CalendarView>
             _mouseCursor = SystemMouseCursors.resizeUp;
           }
         }
-      } else {
-        appointmentView = _appointmentLayout.getAppointmentViewOnPoint(xPosition, yPosition);
-      }
+      } 
+      
       if (appointmentView == null && _selectedAppointmentView == null) {
         _selectionPainter = null;
         _isResizeMode = false;
@@ -7287,9 +7286,9 @@ class _CalendarViewState extends State<_CalendarView>
       }
 
       // Use selected appointment if no appointment found at touch point
-      if (appointmentView == null && _selectedAppointmentView != null) {
-        appointmentView = _selectedAppointmentView!;
-      }
+      // if (appointmentView == null && _selectedAppointmentView != null) {
+      //   appointmentView = _selectedAppointmentView!;
+      // }
 
       // Final check - if still no appointment, return
       if (appointmentView == null) {
@@ -7313,7 +7312,7 @@ class _CalendarViewState extends State<_CalendarView>
           final double appointmentTop = appointmentView.appointmentRect!.top;
           final double appointmentBottom = appointmentView.appointmentRect!.bottom;
           final double appointmentHeight = appointmentBottom - appointmentTop;
-          
+
           if (yPosition > appointmentTop + appointmentHeight / 2) {
             isForwardResize = true;
             _mouseCursor = SystemMouseCursors.resizeDown;
@@ -7326,7 +7325,7 @@ class _CalendarViewState extends State<_CalendarView>
         // Set flags for resizing
         _resizingDetails.value.isForwardResize = isForwardResize;
         _resizingDetails.value.isBackwardResize = isBackwardResize;
-        
+
         // Activate resize mode
         _isResizeMode = true;
       } else {
@@ -8968,10 +8967,10 @@ class _CalendarViewState extends State<_CalendarView>
 
       // Round the time to the nearest 5-minute interval for discrete resizing
       final int intervalMinutes = (resizingTime.minute ~/ _kMinTimeIntervalInMinutes) * _kMinTimeIntervalInMinutes;
-      
+
       // Trigger vibration only when crossing interval boundaries
       _triggerIntervalVibrationIfNeeded(this, resizingTime.hour, intervalMinutes);
-      
+
       resizingTime = DateTime(
           resizingTime.year,
           resizingTime.month,
@@ -12905,7 +12904,7 @@ class _SelectionPainter extends CustomPainter {
   final bool showWeekNumber;
   final bool isMobilePlatform;
 
-  BoxDecoration get _selectionDecoration => selectionDecoration != null 
+  BoxDecoration get _selectionDecoration => selectionDecoration != null
       ? selectionDecoration as BoxDecoration
       : BoxDecoration();
 
@@ -14105,7 +14104,7 @@ DateTime? _timeFromPosition(
     // Round the minute to the nearest 5-minute interval
     final int roundedMinute = ((totalHour - hour) * 60).round();
     final int intervalMinute = (roundedMinute ~/ _kMinTimeIntervalInMinutes) * _kMinTimeIntervalInMinutes;
-    
+
     // Trigger vibration only when crossing interval boundaries
     if (currentState != null) {
       _triggerIntervalVibrationIfNeeded(currentState, hour, intervalMinute);
@@ -14134,7 +14133,7 @@ double _getSingleViewWidthForTimeLineView(_CalendarViewState viewState) {
 Future<void> _triggerIntervalVibrationIfNeeded(_CalendarViewState state, int intervalHour, int intervalMinute) async {
   // Calculate current time interval (in 5-minute blocks from start of day)
   final int currentInterval = (intervalHour * 60 + intervalMinute) ~/ _kMinTimeIntervalInMinutes;
-  
+
   if (state._lastIntervalForVibration != null && state._lastIntervalForVibration != currentInterval) {
     try {
       final bool hasVibrator = await Vibration.hasVibrator();
