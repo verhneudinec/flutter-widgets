@@ -870,6 +870,23 @@ class CalendarViewHelper {
 
     return false;
   }
+
+  /// Creates an RRect for the resize indicator with the given parameters.
+  static RRect createResizeIndicator({
+    required double centerX,
+    required double centerY,
+  }) {
+    const double size = 5;
+    const double cornerRadius = 5;
+    const double padding = 0.5;
+
+    final Rect rect = Rect.fromCenter(
+      center: Offset(centerX, centerY),
+      width: size + padding * 2,
+      height: size + padding * 2,
+    );
+    return RRect.fromRectAndRadius(rect, const Radius.circular(cornerRadius));
+  }
 }
 
 /// Args to get and update the required properties from calendar state to it's

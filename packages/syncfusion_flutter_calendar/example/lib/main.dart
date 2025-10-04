@@ -11,7 +11,7 @@ class CalendarApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       title: 'Calendar Demo',
-      theme: ThemeData(useMaterial3: false),
+      theme: ThemeData.dark(),
       home: const MyHomePage(),
     );
   }
@@ -28,27 +28,172 @@ class MyHomePage extends StatefulWidget {
 }
 
 class _MyHomePageState extends State<MyHomePage> {
+  late CalendarController _calendarController;
+
+  @override
+  void initState() {
+    super.initState();
+    _calendarController = CalendarController();
+    _calendarController.view = CalendarView.day;
+  }
+
+  @override
+  void dispose() {
+    _calendarController.dispose();
+    super.dispose();
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-        body: SfCalendar(
-      view: CalendarView.month,
-      dataSource: MeetingDataSource(_getDataSource()),
-      // by default the month appointment display mode set as Indicator, we can
-      // change the display mode as appointment using the appointment display
-      // mode property
-      monthViewSettings: const MonthViewSettings(
-          appointmentDisplayMode: MonthAppointmentDisplayMode.appointment),
-    ));
+        body: Column(
+          children: [
+            Padding(
+              padding: const EdgeInsets.all(8.0),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  _buildViewButton(CalendarView.day, 'День'),
+                  const SizedBox(width: 8),
+                  _buildViewButton(CalendarView.week, 'Неделя'),
+                  const SizedBox(width: 8),
+                  _buildViewButton(CalendarView.month, 'Месяц'),
+                  const SizedBox(width: 8),
+                  _buildViewButton(CalendarView.schedule, 'Расписание'),
+                ],
+              ),
+            ),
+            Container(
+              height: 700,
+              child: SfCalendar(
+                allowAppointmentResize: true,
+                allowDragAndDrop: true,
+                enablePreload: true,
+                onTap: (calendarTapDetails) {
+                  Navigator.of(context).push(MaterialPageRoute(
+                    builder: (context) => Scaffold( 
+                      appBar: AppBar(
+                        title: Text('Test'),
+                      ),
+                      body: Center(child: Text('${(calendarTapDetails?.appointments?.firstOrNull as Appointment)?.subject}')),
+                    ),
+                  ));
+                },
+                onDragStart: (AppointmentDragStartDetails details) {
+                  ScaffoldMessenger.of(context).removeCurrentSnackBar();
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text('Начало перемещения: {details.appointment!.subject}'),
+                      duration: const Duration(seconds: 1),
+                    ),
+                  );
+                },
+                onDragUpdate: (AppointmentDragUpdateDetails details) {
+                  // Обработка обновления при перетаскивании
+                },
+                onDragEnd: (AppointmentDragEndDetails details) {
+                  ScaffoldMessenger.of(context).removeCurrentSnackBar();
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text('Событие перемещено: {details.appointment!.subject}'),
+                      duration: const Duration(seconds: 2),
+                    ),
+                  );
+                },
+                onAppointmentResizeStart: (AppointmentResizeStartDetails details) {
+                  ScaffoldMessenger.of(context).removeCurrentSnackBar();
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text('Начало изменения размера: ${details.appointment!.subject}'),
+                      duration: const Duration(seconds: 1),
+                    ),
+                  );
+                },
+                onAppointmentResizeUpdate: (AppointmentResizeUpdateDetails details) {
+                  print('RESIZE_UPDATE: ${details.appointment!.subject}, новое время: ${details.resizingTime}, смещение: ${details}');
+                  // Обработка обновления при изменении размера
+                },
+                onAppointmentResizeEnd: (AppointmentResizeEndDetails details) {
+                  print('RESIZE_END: ${details.appointment!.subject}, итоговое время: ${details.startTime} - ${details.endTime}');
+                  ScaffoldMessenger.of(context).removeCurrentSnackBar();
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text('Размер изменен: ${details.appointment!.subject}'),
+                      duration: const Duration(seconds: 2),
+                    ),
+                  );
+                },
+                controller: _calendarController,
+                dataSource: MeetingDataSource(_getDataSource()),
+                // by default the month appointment display mode set as Indicator, we can
+                // change the display mode as appointment using the appointment display
+                // mode property
+                monthViewSettings: const MonthViewSettings(
+                  appointmentDisplayMode: MonthAppointmentDisplayMode.appointment),
+                ),
+            ),
+          ],
+        ));
   }
 
-  List<Meeting> _getDataSource() {
-    final List<Meeting> meetings = <Meeting>[];
+  Widget _buildViewButton(CalendarView view, String label) {
+    return ElevatedButton(
+      onPressed: () {
+        setState(() {
+          _calendarController.view = view;
+        });
+      },
+      style: ElevatedButton.styleFrom(
+        backgroundColor: _calendarController.view == view ? Theme.of(context).primaryColor : null,
+        foregroundColor: _calendarController.view == view ? Colors.white : null,
+      ),
+      child: Text(label),
+    );
+  }
+
+  List<Appointment> _getDataSource() {
+    final List<Appointment> meetings = <Appointment>[];
     final DateTime today = DateTime.now();
     final DateTime startTime = DateTime(today.year, today.month, today.day, 9);
     final DateTime endTime = startTime.add(const Duration(hours: 2));
-    meetings.add(Meeting(
-        'Conference', startTime, endTime, const Color(0xFF0F8644), false));
+
+
+  for (int i = 0; i < 10; i++)
+    // Add appointments for the first 10 minutes of the day
+    for (int i = 0; i < 10; i++) {
+      meetings.add(Appointment(
+        subject: '${startTime.day}.${startTime.month}',
+        startTime:  startTime.copyWith(hour: 13, minute: i),
+        endTime: endTime.copyWith(hour: 15),
+        color: const Color(0xFF0F8644),
+        isAllDay: true,
+      ));
+    }
+
+    // Add appointments for the next 120 days
+    final startDate = DateTime(2025, 7, 5); // Fixed month format from 07 to 7
+    for (int i = 0; i < 120; i++) {
+      final appointmentStart = startDate.add(Duration(days: i));
+      final appointmentEnd = appointmentStart.add(const Duration(hours: 2));
+      
+      // Add full-day appointment
+      meetings.add(Appointment(
+        subject: '${appointmentStart.day}.${appointmentStart.month}',
+        startTime: appointmentStart,
+        endTime: appointmentEnd,
+        color: const Color(0xFF0F8644),
+        isAllDay: true,
+      ));
+
+      // Add specific time appointment
+      meetings.add(Appointment(
+        subject:  '${appointmentStart.day}.${appointmentStart.month}',
+        startTime: appointmentStart.copyWith(hour: 13),
+        endTime: appointmentEnd.copyWith(hour: 15),
+        color: const Color(0xFF0F8644),
+        isAllDay: false,
+      ));
+        }
     return meetings;
   }
 }
@@ -59,7 +204,7 @@ class _MyHomePageState extends State<MyHomePage> {
 class MeetingDataSource extends CalendarDataSource {
   /// Creates a meeting data source, which used to set the appointment
   /// collection to the calendar
-  MeetingDataSource(List<Meeting> source) {
+  MeetingDataSource(List<Appointment> source) {
     appointments = source;
   }
 

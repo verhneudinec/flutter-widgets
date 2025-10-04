@@ -485,6 +485,18 @@ typedef CalendarTapCallback = void Function(
 typedef CalendarLongPressCallback = void Function(
     CalendarLongPressDetails calendarLongPressDetails);
 
+/// Signature for callback that reports that a long press on empty space ended.
+///
+/// The [startTime] and [endTime] parameters provide the date and time range
+/// for the long press action.
+///
+/// Used by [SfCalendar.onEmptySpaceLongPressEnd].
+///
+/// See also:
+/// * [SfCalendar.onEmptySpaceLongPressEnd], which matches this signature.
+/// * [SfCalendar], which uses this signature in one of it's callback.
+typedef EmptySpaceLongPressEndCallback = Future<void> Function(DateTime startTime, DateTime endTime);
+
 /// Signature for callback that reports that
 /// a calendar view selection changed on view.
 ///
