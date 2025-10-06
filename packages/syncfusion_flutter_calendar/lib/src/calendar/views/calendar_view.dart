@@ -9200,6 +9200,7 @@ class _CalendarViewState extends State<_CalendarView>
         top: 0,
         child: widget.isMobilePlatform
             ? GestureDetector(
+                onTap: _isResizeMode ? _handleOnTapForDay : null,
                 onPanStart: (DragStartDetails details) {
                   setState(() {
                     _isPanStarted = true;
