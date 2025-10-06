@@ -12935,7 +12935,9 @@ class _SelectionPainter extends CustomPainter {
         view == CalendarView.month || view == CalendarView.timelineMonth;
     final int timeInterval =
         CalendarViewHelper.getTimeInterval(calendar.timeSlotViewSettings);
-    if (selectedDate != null &&
+    if ( 
+      appointmentView?.appointment?.isAllDay == true ||
+      selectedDate != null &&
         ((isMonthView &&
                 !isDateWithInDateRange(
                     calendar.minDate, calendar.maxDate, selectedDate)) ||
