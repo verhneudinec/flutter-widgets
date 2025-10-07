@@ -31,6 +31,9 @@ const double _kAllDayLayoutHeight = 60;
 /// Default time interval in minutes for discrete resizing and time calculations
 const int _kMinTimeIntervalInMinutes = 5;
 
+const double _kTimeIndicatorVerticalOffset = -8.0;
+const double _kTimeIndicatorHorizontalOffset = -0.025;
+
 /// Holds the looping widget for calendar view(time slot, month, timeline and
 /// appointment views) widgets of calendar widget.
 @immutable
@@ -13265,12 +13268,8 @@ class _SelectionPainter extends CustomPainter {
 
     textPainter.layout(maxWidth: isTimelineView ? timeIntervalHeight : timeLabelWidth);
 
-    final xPosition = (timeLabelWidth - textPainter.width) / 2;
-    double yPosition = position.dy;
-
-    if (!isEndTime) {
-      yPosition -= 10;
-    }
+    final xPosition = (timeLabelWidth - textPainter.width) / 2 + _kTimeIndicatorHorizontalOffset;
+    double yPosition = position.dy + _kTimeIndicatorVerticalOffset;
 
     textPainter.paint(canvas, Offset(xPosition, yPosition));
   }
@@ -14573,8 +14572,8 @@ class _ResizingAppointmentPainter extends CustomPainter {
         xPosition -= _textPainter.width;
       }
     } else {
-      yPosition = resizingDetails.value.position.value!.dy;
-      xPosition = (timeLabelWidth - _textPainter.width) / 2;
+      yPosition = resizingDetails.value.position.value!.dy + _kTimeIndicatorVerticalOffset;
+      xPosition = (timeLabelWidth - _textPainter.width) / 2 + _kTimeIndicatorHorizontalOffset;
       if (isRTL) {
         xPosition = (size.width - timeLabelWidth) + xPosition;
       }
@@ -15394,8 +15393,8 @@ class _DraggingAppointmentRenderObject extends RenderBox
         xPosition -= _textPainter.width;
       }
     } else {
-      yPosition = dragDetails.position.value!.dy;
-      xPosition = (timeLabelSize - _textPainter.width) / 2;
+      yPosition = dragDetails.position.value!.dy + _kTimeIndicatorVerticalOffset;
+      xPosition = (timeLabelSize - _textPainter.width) / 2 + _kTimeIndicatorHorizontalOffset;
       if (isRTL) {
         xPosition = (size.width - timeLabelSize) + xPosition;
       }
