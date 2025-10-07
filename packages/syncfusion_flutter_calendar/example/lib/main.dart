@@ -45,6 +45,8 @@ class _MyHomePageState extends State<MyHomePage> {
 
   @override
   Widget build(BuildContext context) {
+    final data = MeetingDataSource(_getDataSource());
+
     return Scaffold(
         body: Column(
           children: [
@@ -53,13 +55,13 @@ class _MyHomePageState extends State<MyHomePage> {
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  _buildViewButton(CalendarView.day, 'День'),
+                  _buildViewButton(CalendarView.day, 'Day'),
                   const SizedBox(width: 8),
-                  _buildViewButton(CalendarView.week, 'Неделя'),
+                  _buildViewButton(CalendarView.week, 'Week'),
                   const SizedBox(width: 8),
-                  _buildViewButton(CalendarView.month, 'Месяц'),
+                  _buildViewButton(CalendarView.month, 'Month'),
                   const SizedBox(width: 8),
-                  _buildViewButton(CalendarView.schedule, 'Расписание'),
+                  _buildViewButton(CalendarView.schedule, 'Schedule'),
                 ],
               ),
             ),
@@ -69,33 +71,56 @@ class _MyHomePageState extends State<MyHomePage> {
                 allowAppointmentResize: true,
                 allowDragAndDrop: true,
                 enablePreload: true,
-                onTap: (calendarTapDetails) {
-                  Navigator.of(context).push(MaterialPageRoute(
-                    builder: (context) => Scaffold( 
-                      appBar: AppBar(
-                        title: Text('Test'),
-                      ),
-                      body: Center(child: Text('${(calendarTapDetails?.appointments?.firstOrNull as Appointment)?.subject}')),
-                    ),
-                  ));
+                timeSlotViewSettings: TimeSlotViewSettings(
+                  timeFormat: 'HH:mm'
+                ),
+                dragAndDropSettings: DragAndDropSettings(
+                  indicatorTimeFormat: 'HH:mm'
+                ),
+                onViewChanged: (d) {
+                  // _calendarController.selectedDate = DateTime.now();
+                  // _calendarController.displayDate = DateTime.now();
                 },
-                onDragStart: (AppointmentDragStartDetails details) {
-                  ScaffoldMessenger.of(context).removeCurrentSnackBar();
+                onEmptySpaceLongPressEnd: (startTime, endTime) async {
+                  print('onEmptySpaceLongPressEnd: start: $startTime, end: $endTime');
+                  await Future.delayed(Duration(seconds: 2));
+                  
+                },
+                onTap: (calendarTapDetails) {
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(
-                      content: Text('Начало перемещения: {details.appointment!.subject}'),
+                      content: Text('Tap on ${calendarTapDetails?.appointments?.firstOrNull?.subject}'),
                       duration: const Duration(seconds: 1),
                     ),
                   );
                 },
-                onDragUpdate: (AppointmentDragUpdateDetails details) {
-                  // Обработка обновления при перетаскивании
-                },
-                onDragEnd: (AppointmentDragEndDetails details) {
+                onDragStart: (AppointmentDragStartDetails details) {
+                  final app = (details.appointment as Appointment);
                   ScaffoldMessenger.of(context).removeCurrentSnackBar();
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(
-                      content: Text('Событие перемещено: {details.appointment!.subject}'),
+                      content: Text('Drag start: ${Colors.red.value==app.color.value}'),
+                      duration: const Duration(seconds: 1),
+                    ),
+                  );
+                },
+                selectionDecoration: BoxDecoration(
+                  color: Colors.red.withOpacity(0.5),
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(
+                    color: Colors.red,
+                    width: 2,
+                  ),
+                ),
+                onDragUpdate: (AppointmentDragUpdateDetails details) {
+                  // Handle drag update
+                },
+                onDragEnd: (AppointmentDragEndDetails details) {
+                  final appointment = details.appointment as Appointment;
+                  ScaffoldMessenger.of(context).removeCurrentSnackBar();
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text('Event moved: ${appointment.subject} ${appointment.startTime} - ${appointment.endTime}'),
                       duration: const Duration(seconds: 2),
                     ),
                   );
@@ -104,27 +129,27 @@ class _MyHomePageState extends State<MyHomePage> {
                   ScaffoldMessenger.of(context).removeCurrentSnackBar();
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(
-                      content: Text('Начало изменения размера: ${details.appointment!.subject}'),
+                      content: Text('Resize start: ${details.appointment!.subject}'),
                       duration: const Duration(seconds: 1),
                     ),
                   );
                 },
                 onAppointmentResizeUpdate: (AppointmentResizeUpdateDetails details) {
-                  print('RESIZE_UPDATE: ${details.appointment!.subject}, новое время: ${details.resizingTime}, смещение: ${details}');
-                  // Обработка обновления при изменении размера
+                  print('RESIZE_UPDATE: ${details.appointment!.subject}, new time: ${details.resizingTime}, offset: ${details}');
+                  // Handle resize update
                 },
                 onAppointmentResizeEnd: (AppointmentResizeEndDetails details) {
-                  print('RESIZE_END: ${details.appointment!.subject}, итоговое время: ${details.startTime} - ${details.endTime}');
+                  final appointment = details.appointment as Appointment;
                   ScaffoldMessenger.of(context).removeCurrentSnackBar();
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(
-                      content: Text('Размер изменен: ${details.appointment!.subject}'),
+                      content: Text('Event resized: ${appointment.subject} ${appointment.startTime} - ${appointment.endTime}'),
                       duration: const Duration(seconds: 2),
                     ),
                   );
                 },
                 controller: _calendarController,
-                dataSource: MeetingDataSource(_getDataSource()),
+                dataSource: data,
                 // by default the month appointment display mode set as Indicator, we can
                 // change the display mode as appointment using the appointment display
                 // mode property
