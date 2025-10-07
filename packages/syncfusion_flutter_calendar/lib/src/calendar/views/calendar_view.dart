@@ -9241,8 +9241,47 @@ class _CalendarViewState extends State<_CalendarView>
                   _resetResizingPainter();
                 },
                 child: _isResizeMode && _interactingAppointment != null
-                    ? IgnorePointer(
-                        ignoring: _selectedAppointmentView == null || (isAllDayPanel && _mouseCursor == SystemMouseCursors.basic),
+                  ? IgnorePointer(
+                      ignoring: _selectedAppointmentView == null || (isAllDayPanel && _mouseCursor == SystemMouseCursors.basic),
+                      child: RepaintBoundary(
+                          child: CustomPaint(
+                            key: 'resizing_appointment_painter',
+                            painter: _ResizingAppointmentPainter(
+                                _resizingDetails,
+                                _isRTL,
+                                widget.textScaleFactor,
+                                widget.isMobilePlatform,
+                                AppointmentHelper.getAppointmentTextStyle(
+                                    widget.calendar.appointmentTextStyle,
+                                    widget.view,
+                                    widget.themeData),
+                                allDayPanelHeight,
+                                viewHeaderHeight,
+                                timeLabelWidth,
+                                _timeIntervalHeight,
+                                _scrollController,
+                                widget.calendar.dragAndDropSettings,
+                                widget.view,
+                                _mouseCursor,
+                                weekNumberPanelWidth,
+                                widget.calendarTheme,
+                                widget.calendar.selectionDecoration),
+                          )
+                        )
+                      )
+                  : Container()
+                )
+                : GestureDetector(
+                    onVerticalDragStart: isVerticalResize ? _onVerticalStart : null,
+                    onVerticalDragUpdate: isVerticalResize ? _onVerticalUpdate : null,
+                    onVerticalDragEnd: isVerticalResize ? _onVerticalEnd : null,
+                    onHorizontalDragStart: isVerticalResize ? null : _onHorizontalStart,
+                    onHorizontalDragUpdate: isVerticalResize ? null : _onHorizontalUpdate,
+                    onHorizontalDragEnd: isVerticalResize ? null : _onHorizontalEnd,
+                    child: IgnorePointer(
+                        ignoring: (_mouseCursor == SystemMouseCursors.basic ||
+                                _mouseCursor == SystemMouseCursors.move) ||
+                            isAllDayPanel,
                         child: RepaintBoundary(
                             child: CustomPaint(
                           painter: _ResizingAppointmentPainter(
@@ -9265,42 +9304,7 @@ class _CalendarViewState extends State<_CalendarView>
                               weekNumberPanelWidth,
                               widget.calendarTheme,
                               widget.calendar.selectionDecoration),
-                        )))
-                    : Container())
-            : GestureDetector(
-                onVerticalDragStart: isVerticalResize ? _onVerticalStart : null,
-                onVerticalDragUpdate: isVerticalResize ? _onVerticalUpdate : null,
-                onVerticalDragEnd: isVerticalResize ? _onVerticalEnd : null,
-                onHorizontalDragStart: isVerticalResize ? null : _onHorizontalStart,
-                onHorizontalDragUpdate: isVerticalResize ? null : _onHorizontalUpdate,
-                onHorizontalDragEnd: isVerticalResize ? null : _onHorizontalEnd,
-                child: IgnorePointer(
-                    ignoring: (_mouseCursor == SystemMouseCursors.basic ||
-                            _mouseCursor == SystemMouseCursors.move) ||
-                        isAllDayPanel,
-                    child: RepaintBoundary(
-                        child: CustomPaint(
-                      painter: _ResizingAppointmentPainter(
-                          _resizingDetails,
-                          _isRTL,
-                          widget.textScaleFactor,
-                          widget.isMobilePlatform,
-                          AppointmentHelper.getAppointmentTextStyle(
-                              widget.calendar.appointmentTextStyle,
-                              widget.view,
-                              widget.themeData),
-                          allDayPanelHeight,
-                          viewHeaderHeight,
-                          timeLabelWidth,
-                          _timeIntervalHeight,
-                          _scrollController,
-                          widget.calendar.dragAndDropSettings,
-                          widget.view,
-                          _mouseCursor,
-                          weekNumberPanelWidth,
-                          widget.calendarTheme,
-                          widget.calendar.selectionDecoration),
-                    )))));
+                        )))));
   }
 
   // Returns the day view as a child for the calendar view.
