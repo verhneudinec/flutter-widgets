@@ -8483,18 +8483,20 @@ class _CalendarViewState extends State<_CalendarView>
           _autoScrollTimer = null;
         }
       });
-    } else if (yPosition >= widget.height &&
+    } else if (yPosition >= widget.height - viewHeaderHeight - allDayPanelHeight - 1 &&
         _scrollController!.position.pixels !=
-            _scrollController!.position.maxScrollExtent) {
+            _scrollController!.position.maxScrollExtent &&
+        isForwardResize) {
       if (_autoScrollTimer != null) {
         return;
       }
       _autoScrollTimer = Timer(const Duration(milliseconds: 200), () async {
         yPosition = _resizingDetails.value.position.value?.dy;
         if (yPosition != null &&
-            yPosition! >= widget.height &&
+            yPosition! >= widget.height - viewHeaderHeight - allDayPanelHeight - 1 &&
             _scrollController!.position.pixels !=
-                _scrollController!.position.maxScrollExtent) {
+                _scrollController!.position.maxScrollExtent &&
+            isForwardResize) {
           Future<void> updateScrollPosition() async {
             double scrollPosition =
                 _scrollController!.position.pixels + timeIntervalHeight;
@@ -8546,9 +8548,10 @@ class _CalendarViewState extends State<_CalendarView>
                 yPosition!);
 
             if (yPosition != null &&
-                yPosition! >= widget.height &&
+                yPosition! >= widget.height - viewHeaderHeight - allDayPanelHeight - 1 &&
                 _scrollController!.position.pixels !=
-                    _scrollController!.position.maxScrollExtent) {
+                    _scrollController!.position.maxScrollExtent &&
+                isForwardResize) {
               updateScrollPosition();
             } else if (_autoScrollTimer != null) {
               _autoScrollTimer!.cancel();
