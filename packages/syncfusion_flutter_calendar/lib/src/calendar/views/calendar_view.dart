@@ -1,6 +1,5 @@
 import 'dart:async';
 import 'dart:math' as math;
-import 'dart:math';
 
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
@@ -1102,6 +1101,39 @@ class _CustomCalendarScrollViewState extends State<CustomCalendarScrollView>
       }
 
       currentState._selectedDateRangeEnd = rangeEnd;
+
+      // Add auto-scroll down when creating a appointment 
+      if (!isTimelineView && widget.view != CalendarView.month) {
+        final double timeIntervalHeight = currentState._getTimeIntervalHeight(
+            widget.calendar,
+            widget.view,
+            widget.width,
+            widget.height,
+            currentState.widget.visibleDates.length,
+            widget.isMobilePlatform);
+
+        final double yPosition = localPosition.dy;
+
+        final double viewHeaderHeight = CalendarViewHelper.getViewHeaderHeight(
+            widget.calendar.viewHeaderHeight, widget.view);
+        final double allDayPanelHeight = _updateCalendarStateDetails.allDayPanelHeight;
+        
+        if (yPosition >= widget.height - viewHeaderHeight - allDayPanelHeight - 1 &&
+            currentState._scrollController!.position.pixels !=
+                currentState._scrollController!.position.maxScrollExtent) {
+          double scrollPosition =
+              currentState._scrollController!.position.pixels + timeIntervalHeight;
+          if (scrollPosition > currentState._scrollController!.position.maxScrollExtent) {
+            scrollPosition = currentState._scrollController!.position.maxScrollExtent;
+          }
+
+          currentState._scrollController!.position.moveTo(
+            scrollPosition,
+            duration: const Duration(milliseconds: 30),
+            curve: Curves.easeInOut,
+          );
+        }
+      }
     }
 
     currentState._selectionPainter!.repaintNotifier.value = !currentState._selectionPainter!.repaintNotifier.value;
@@ -6428,7 +6460,7 @@ class _CalendarViewState extends State<_CalendarView>
       _clearSelection();
     }
   }
-  
+
   void _clearSelection() {
     setState(() {
       _selectionPainter = null;
@@ -7292,8 +7324,8 @@ class _CalendarViewState extends State<_CalendarView>
             _mouseCursor = SystemMouseCursors.resizeUp;
           }
         }
-      } 
-      
+      }
+
       if (appointmentView == null && _selectedAppointmentView == null) {
         _selectionPainter = null;
         _isResizeMode = false;
@@ -8803,7 +8835,7 @@ class _CalendarViewState extends State<_CalendarView>
             final int timeIntervalMinutes = CalendarViewHelper.getTimeInterval(widget.calendar.timeSlotViewSettings);
             final double pixelsPerMinute = timeIntervalSize / timeIntervalMinutes;
              double minimumTimeIntervalSize = pixelsPerMinute * _kMinTimeIntervalInMinutes;
-             
+
             if (minimumTimeIntervalSize < 12) {
               minimumTimeIntervalSize = 12; // keep a small visual minimum in pixels
             }
@@ -12945,7 +12977,7 @@ class _SelectionPainter extends CustomPainter {
         view == CalendarView.month || view == CalendarView.timelineMonth;
     final int timeInterval =
         CalendarViewHelper.getTimeInterval(calendar.timeSlotViewSettings);
-    if ( 
+    if (
       appointmentView?.appointment?.isAllDay == true ||
       selectedDate != null &&
         ((isMonthView &&
