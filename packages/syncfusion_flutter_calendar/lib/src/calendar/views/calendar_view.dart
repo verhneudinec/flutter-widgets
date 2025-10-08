@@ -8795,9 +8795,14 @@ class _CalendarViewState extends State<_CalendarView>
                 widget.height,
                 widget.visibleDates.length,
                 widget.isMobilePlatform);
-            double minimumTimeIntervalSize = timeIntervalSize / 4;
-            if (minimumTimeIntervalSize < 20) {
-              minimumTimeIntervalSize = 20;
+            // Compute minimum pixel distance based on a minimal resize duration (5 minutes)
+            // This avoids overly large minimum caused by current cell height and allows shrinking short.
+            final int timeIntervalMinutes = CalendarViewHelper.getTimeInterval(widget.calendar.timeSlotViewSettings);
+            final double pixelsPerMinute = timeIntervalSize / timeIntervalMinutes;
+             double minimumTimeIntervalSize = pixelsPerMinute * _kMinTimeIntervalInMinutes;
+             
+            if (minimumTimeIntervalSize < 12) {
+              minimumTimeIntervalSize = 12; // keep a small visual minimum in pixels
             }
 
             if (isForwardResize) {
@@ -8805,20 +8810,14 @@ class _CalendarViewState extends State<_CalendarView>
                       _scrollController!.offset +
                       allDayPanelHeight! +
                       viewHeaderHeight!) +
-                  (appointmentView.appointmentRect!.height / 2 >
-                          minimumTimeIntervalSize
-                      ? minimumTimeIntervalSize
-                      : appointmentView.appointmentRect!.height / 2);
+                      minimumTimeIntervalSize;
             } else if (isBackwardResize) {
               _maximumResizingPosition =
                   (appointmentView.appointmentRect!.bottom -
                           _scrollController!.offset +
                           allDayPanelHeight! +
                           viewHeaderHeight!) -
-                      (appointmentView.appointmentRect!.height / 2 >
-                              minimumTimeIntervalSize
-                          ? minimumTimeIntervalSize
-                          : appointmentView.appointmentRect!.height / 2);
+                          minimumTimeIntervalSize;
             }
           }
         }
