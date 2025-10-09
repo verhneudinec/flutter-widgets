@@ -7460,23 +7460,6 @@ class _CalendarViewState extends State<_CalendarView>
         _resizingDetails.value.appointmentView!.appointmentRect!.left,
         yPosition);
 
-    if (isForwardResize) {
-      // When resizing down (isForwardResize), position should be below the top boundary of the meeting
-      final double appointmentTop = _resizingDetails.value.appointmentView!.appointmentRect!.top;
-      if (yPosition < appointmentTop) {
-        // Do not correct position to avoid sharp time jump
-      }
-    } else if (isBackwardResize) {
-      // When resizing up (isBackwardResize), position should be above the bottom boundary of the meeting
-      final double appointmentBottom = _resizingDetails.value.appointmentView!.appointmentRect!.bottom;
-      if (yPosition > appointmentBottom) {
-        yPosition = appointmentBottom;
-        _resizingDetails.value.position.value = Offset(
-            _resizingDetails.value.appointmentView!.appointmentRect!.left,
-            yPosition);
-      }
-    }
-
     _updateAppointmentResizingUpdateCallback(isForwardResize, isBackwardResize,
         yPosition, viewHeaderHeight, allDayPanelHeight);
   }
@@ -8830,14 +8813,9 @@ class _CalendarViewState extends State<_CalendarView>
                 widget.height,
                 widget.visibleDates.length,
                 widget.isMobilePlatform);
-            // Compute minimum pixel distance based on a minimal resize duration (5 minutes)
-            // This avoids overly large minimum caused by current cell height and allows shrinking short.
-            final int timeIntervalMinutes = CalendarViewHelper.getTimeInterval(widget.calendar.timeSlotViewSettings);
-            final double pixelsPerMinute = timeIntervalSize / timeIntervalMinutes;
-             double minimumTimeIntervalSize = pixelsPerMinute * _kMinTimeIntervalInMinutes;
-
-            if (minimumTimeIntervalSize < 12) {
-              minimumTimeIntervalSize = 12; // keep a small visual minimum in pixels
+            double minimumTimeIntervalSize = timeIntervalSize / 4;
+            if (minimumTimeIntervalSize < 16) {
+              minimumTimeIntervalSize = 16;
             }
 
             if (isForwardResize) {
