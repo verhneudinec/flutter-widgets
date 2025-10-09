@@ -7241,6 +7241,36 @@ class _CalendarViewState extends State<_CalendarView>
     return _appointmentLayout;
   }
 
+  /// Finds the appointment view at the closest offset to the given position.
+  /// 
+  /// This method checks the appointment views at three points: center, top, and bottom
+  /// of the time interval. If an appointment with the matching ID is found, it is returned.
+  /// If no appointment is found or the ID does not match, null is returned.
+  AppointmentView? _hitTestSelectedAppointmentAtClosestOffset(
+    double xPosition, 
+    double yPosition, 
+    String? selectedAppointmentId,
+  ) {
+    // 55% of _timeIntervalHeight
+    final double resizeArea = _timeIntervalHeight * 0.55;
+    
+    // Check points in priority order: center, top, bottom
+    for (final yOffset in [0.0, -resizeArea, resizeArea]) {
+      final appointmentView = _appointmentLayout.getAppointmentViewOnPoint(
+        xPosition, 
+        yPosition + yOffset,
+      );
+      
+      // If there is no filter by ID or the ID matches - return the found one
+      if (selectedAppointmentId == null || 
+          appointmentView?.appointment?.id == selectedAppointmentId) {
+        return appointmentView;
+      }
+    }
+    
+    return null;
+  }
+
   void _onVerticalStart(DragStartDetails details) {
     final double xPosition = details.localPosition.dx;
     double yPosition = details.localPosition.dy;
@@ -7282,22 +7312,11 @@ class _CalendarViewState extends State<_CalendarView>
 
       // Enlarge search area on mobile
       if (widget.isMobilePlatform) {
-        final selectionAppointmentId = _selectionPainter?.appointmentView?.appointment?.id;
+        final selectionAppointmentId = _selectionPainter?.appointmentView?.appointment?.id?.toString();
 
-        // First try to find the appointment at the exact touch point
-        appointmentView = _appointmentLayout.getAppointmentViewOnPoint(xPosition, yPosition);
-
-        // 55% of _timeIntervalHeight
-        final double resizeArea = _timeIntervalHeight * 0.55;
-
-        // If not found, try with larger offsets up and down
-        appointmentView ??= _appointmentLayout.getAppointmentViewOnPoint(xPosition, yPosition - resizeArea);
-        appointmentView ??= _appointmentLayout.getAppointmentViewOnPoint(xPosition, yPosition + resizeArea);
-
-        // Reset the appointment if it has a different id than the selected one
-        if (appointmentView?.appointment?.id != selectionAppointmentId) {
-          appointmentView = null;
-        }
+        // Search appointment at the touch point
+        // DONT use _selectionPainter?.appointmentView because it doesn’t account for the offset and may take a position that’s too far
+        appointmentView = _hitTestSelectedAppointmentAtClosestOffset(xPosition, yPosition, selectionAppointmentId);
 
         // If found an appointment, determine resize type based on touch point
         if (appointmentView != null) {
