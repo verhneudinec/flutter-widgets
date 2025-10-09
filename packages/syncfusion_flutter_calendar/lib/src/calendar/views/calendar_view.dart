@@ -1129,7 +1129,7 @@ class _CustomCalendarScrollViewState extends State<CustomCalendarScrollView>
 
           currentState._scrollController!.position.moveTo(
             scrollPosition,
-            duration: const Duration(milliseconds: 30),
+            duration: const Duration(milliseconds: 20),
             curve: Curves.easeInOut,
           );
         }
