@@ -1263,9 +1263,14 @@ class _CustomCalendarScrollViewState extends State<CustomCalendarScrollView>
     // Trigger vibration when crossing 5-minute intervals during task creation
     final int hour = totalMinutes ~/ 60;
     final int minute = totalMinutes % 60;
-    _triggerIntervalVibrationIfNeeded(currentState, hour, minute);
 
-    return DateTime(date.year, date.month, date.day, hour, minute);
+    final result = DateTime(date.year, date.month, date.day, hour, minute);
+
+    if (currentState._selectedDateRangeEnd != null && result.isAfter(currentState._selectedDateRangeEnd!)) {
+      _triggerIntervalVibrationIfNeeded(currentState, hour, minute);
+    }
+
+    return result;
   }
 
   AppointmentView? _getDragAppointment(
