@@ -1151,10 +1151,8 @@ class _CustomCalendarScrollViewState extends State<CustomCalendarScrollView>
     longPressOnEmptySpace = false;
 
     final Offset localPosition = details.localPosition;
-    final DateTime? selectedDateTime = _getSelectedDateTimeFromPosition(
-        localPosition, currentState, isTimelineView, viewHeaderHeight, timeLabelWidth);
 
-    if (selectedDateTime != null) {
+    if (currentState._selectedDateRangeStart != null && currentState._selectedDateRangeEnd != null) {
       if (currentState.widget.calendar.onEmptySpaceLongPressEnd != null) {
         if (widget.view == CalendarView.month) {
           // Await the completion of the Future before resetting the selection state
