@@ -1214,7 +1214,18 @@ class _CustomCalendarScrollViewState extends State<CustomCalendarScrollView>
     final int hour = (cellProgress * 24).floor();
     final int minute = ((cellProgress * 24 * 60) % 60).floor() ~/ _kMinTimeIntervalInMinutes * _kMinTimeIntervalInMinutes;
 
-    return DateTime(date.year, date.month, date.day, hour, minute);
+    final DateTime result = DateTime(date.year, date.month, date.day, hour, minute);
+
+    // Trigger vibration when selecting date/time in month view
+    if (currentState._selectedDateRangeStart == null || (currentState._selectedDateRangeEnd != null && !isAtSameDay(result, currentState._selectedDateRangeEnd!))) {
+      _triggerIntervalVibrationIfNeeded(currentState, hour, minute);
+    }
+
+    return result;
+  }
+
+  bool isAtSameDay(DateTime? date1, DateTime? date2) {
+    return date1?.year == date2?.year && date1?.month == date2?.month && date1?.day == date2?.day;
   }
 
   // Get date and time from position for day/week view
