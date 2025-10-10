@@ -297,6 +297,8 @@ class _CustomCalendarScrollViewState extends State<CustomCalendarScrollView>
 
   static final double _dragThreshold = 3.5;
 
+  Offset? _lastLongPressLocalPosition;
+
   @override
   void initState() {
     _appointmentAnimationController = AnimationController(
@@ -1043,6 +1045,77 @@ class _CustomCalendarScrollViewState extends State<CustomCalendarScrollView>
     }
   }
 
+  // Auto-scroll day/timeline during long-press range selection
+  // Simmilar to _updateAutoScrollDay, _updateAutoScrollTimeline methods
+  Future<void> _updateAutoScrollDayForLongPress(
+      LongPressMoveUpdateDetails details,
+      _CalendarViewState currentState,
+      double viewHeaderHeight,
+      double allDayPanelHeight
+    ) async {
+    if (widget.view == CalendarView.month || currentState._scrollController == null) {
+      return;
+    }
+
+    final double timeIntervalHeight = currentState._getTimeIntervalHeight(
+      widget.calendar,
+      widget.view,
+      widget.width,
+      widget.height,
+      currentState.widget.visibleDates.length,
+      widget.isMobilePlatform
+    );
+
+    // Auto-scroll down when long-press range is below the boundary
+    final double boundary = widget.height - viewHeaderHeight - allDayPanelHeight - 1;
+    final ScrollPosition position = currentState._scrollController!.position;
+
+    void stopTimer() {
+      if (currentState._autoScrollTimer != null) {
+        currentState._autoScrollTimer!.cancel();
+        currentState._autoScrollTimer = null;
+      }
+    }
+
+    final double yPosition = details.localPosition.dy;
+    final bool canScrollDown = yPosition >= boundary && position.pixels != position.maxScrollExtent;
+
+    if (!canScrollDown) {
+      // Exit the auto-scroll zone — stop the timer
+      stopTimer();
+      return;
+    }
+
+    if (currentState._autoScrollTimer != null) {
+      // already scrolling
+      return;
+    }
+
+    currentState._autoScrollTimer = Timer(const Duration(milliseconds: 200), () async {
+      double? latestY = _lastLongPressLocalPosition?.dy;
+
+      // Check if the finger is still in the auto-scroll zone
+      bool inFingerInZone() => latestY != null && latestY >= boundary && position.pixels != position.maxScrollExtent;
+
+      while (inFingerInZone()) {
+        double scrollPosition = position.pixels + timeIntervalHeight;
+        if (scrollPosition > position.maxScrollExtent) {
+          scrollPosition = position.maxScrollExtent;
+        }
+
+        await position.moveTo(
+          scrollPosition,
+          duration: const Duration(milliseconds: 100),
+          curve: Curves.easeInOut,
+        );
+
+        latestY = _lastLongPressLocalPosition?.dy;
+      }
+
+      stopTimer();
+    });
+  }
+
   void _handleEmptySpaceLongPress(
       LongPressStartDetails details,
       _CalendarViewState currentState,
@@ -1067,15 +1140,17 @@ class _CustomCalendarScrollViewState extends State<CustomCalendarScrollView>
   }
 
   // Handle finger movement during long press
-  void _handleEmptySpaceLongPressMove(
+  Future<void> _handleEmptySpaceLongPressMove(
       LongPressMoveUpdateDetails details,
       _CalendarViewState currentState,
       bool isTimelineView,
       double viewHeaderHeight,
       double timeLabelWidth
-    ) {
+    ) async {
 
     final Offset localPosition = details.localPosition;
+    // Save the previous position to calculate the Y delta for manual scrolling
+    _lastLongPressLocalPosition = localPosition;
     final DateTime rangeStart = currentState._selectedDateRangeStart!;
     DateTime? rangeEnd = _getSelectedDateTimeFromPosition(
         localPosition, currentState, isTimelineView, viewHeaderHeight, timeLabelWidth);
@@ -1100,38 +1175,13 @@ class _CustomCalendarScrollViewState extends State<CustomCalendarScrollView>
       }
 
       currentState._selectedDateRangeEnd = rangeEnd;
-
-      // Add auto-scroll down when creating a appointment 
-      if (!isTimelineView && widget.view != CalendarView.month) {
-        final double timeIntervalHeight = currentState._getTimeIntervalHeight(
-            widget.calendar,
-            widget.view,
-            widget.width,
-            widget.height,
-            currentState.widget.visibleDates.length,
-            widget.isMobilePlatform);
-
-        final double yPosition = localPosition.dy;
-
-        final double viewHeaderHeight = CalendarViewHelper.getViewHeaderHeight(
-            widget.calendar.viewHeaderHeight, widget.view);
-        final double allDayPanelHeight = _updateCalendarStateDetails.allDayPanelHeight;
+      
+      // Auto-scroll when creating an event
+      if (widget.view != CalendarView.month && currentState._scrollController != null) {
+        final double headerHeight = CalendarViewHelper.getViewHeaderHeight(widget.calendar.viewHeaderHeight, widget.view);
+        final double allDayHeight = _updateCalendarStateDetails.allDayPanelHeight;
         
-        if (yPosition >= widget.height - viewHeaderHeight - allDayPanelHeight - 50 &&
-            currentState._scrollController!.position.pixels !=
-                currentState._scrollController!.position.maxScrollExtent) {
-          double scrollPosition =
-              currentState._scrollController!.position.pixels + timeIntervalHeight;
-          if (scrollPosition > currentState._scrollController!.position.maxScrollExtent) {
-            scrollPosition = currentState._scrollController!.position.maxScrollExtent;
-          }
-
-          currentState._scrollController!.position.moveTo(
-            scrollPosition,
-            duration: const Duration(milliseconds: 20),
-            curve: Curves.easeInOut,
-          );
-        }
+        _updateAutoScrollDayForLongPress(details, currentState, headerHeight, allDayHeight);
       }
     }
 
