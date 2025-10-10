@@ -1092,7 +1092,7 @@ class _CustomCalendarScrollViewState extends State<CustomCalendarScrollView>
           rangeStart.year,
           rangeStart.month,
           rangeStart.day,
-          23, 59
+          23, 55
         );
 
         rangeEnd = endOfDay;
@@ -13608,7 +13608,9 @@ class _SelectionPainter extends CustomPainter {
         oldWidget.visibleDates != visibleDates ||
         oldWidget.selectedResourceIndex != selectedResourceIndex ||
         oldWidget.isRTL != isRTL ||
-        oldWidget.appointmentView != appointmentView;
+        oldWidget.appointmentView != appointmentView ||
+        oldWidget.selectedRangeStart != selectedRangeStart ||
+        oldWidget.selectedRangeEnd != selectedRangeEnd;
   }
 }
 
@@ -14155,7 +14157,7 @@ DateTime? _timeFromPosition(
 
     // Round the minute to the nearest 5-minute interval
     final int roundedMinute = ((totalHour - hour) * 60).round();
-    final int intervalMinute = (roundedMinute ~/ _kMinTimeIntervalInMinutes) * _kMinTimeIntervalInMinutes;
+    int intervalMinute = (roundedMinute ~/ _kMinTimeIntervalInMinutes) * _kMinTimeIntervalInMinutes;
 
     // Trigger vibration only when crossing interval boundaries
     if (currentState != null) {
@@ -14165,6 +14167,17 @@ DateTime? _timeFromPosition(
     if (isTimelineView) {
       while (hour >= endHour) {
         hour = ((hour - endHour) + startHour).toInt();
+      }
+    }
+
+    // Limit time to 23:55 for day and week views when resizing beyond current day
+    if (currentState != null && 
+        (currentState.widget.view == CalendarView.day || 
+         currentState.widget.view == CalendarView.week ||
+         currentState.widget.view == CalendarView.workWeek)) {
+      if (hour >= 24 || (hour == 23 && intervalMinute > 55)) {
+        hour = 23;
+        intervalMinute = 55;
       }
     }
 
