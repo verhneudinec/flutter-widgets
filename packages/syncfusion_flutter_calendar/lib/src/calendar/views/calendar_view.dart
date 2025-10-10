@@ -1118,7 +1118,7 @@ class _CustomCalendarScrollViewState extends State<CustomCalendarScrollView>
             widget.calendar.viewHeaderHeight, widget.view);
         final double allDayPanelHeight = _updateCalendarStateDetails.allDayPanelHeight;
         
-        if (yPosition >= widget.height - viewHeaderHeight - allDayPanelHeight - 1 &&
+        if (yPosition >= widget.height - viewHeaderHeight - allDayPanelHeight - 50 &&
             currentState._scrollController!.position.pixels !=
                 currentState._scrollController!.position.maxScrollExtent) {
           double scrollPosition =
