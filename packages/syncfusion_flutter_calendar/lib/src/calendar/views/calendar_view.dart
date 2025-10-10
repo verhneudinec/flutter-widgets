@@ -1214,7 +1214,23 @@ class _CustomCalendarScrollViewState extends State<CustomCalendarScrollView>
     final int hour = (cellProgress * 24).floor();
     final int minute = ((cellProgress * 24 * 60) % 60).floor() ~/ _kMinTimeIntervalInMinutes * _kMinTimeIntervalInMinutes;
 
-    return DateTime(date.year, date.month, date.day, hour, minute);
+    final DateTime result = DateTime(date.year, date.month, date.day, hour, minute);
+
+    // Trigger vibration when selecting date/time in month view
+    if (currentState._selectedDateRangeStart == null || (currentState._selectedDateRangeEnd != null && _isAfterDay(result, currentState._selectedDateRangeEnd!))) {
+      _triggerIntervalVibrationIfNeeded(currentState, hour, minute, forceTrigger: true);
+    }
+
+    return result;
+  }
+
+  bool _isAfterDay(DateTime? date1, DateTime? date2) {
+    return 
+      date1?.year == date2?.year 
+      && date1?.month == date2?.month 
+      && date1 != null 
+      && date2 != null 
+      && date1.day > date2.day;
   }
 
   // Get date and time from position for day/week view
@@ -14194,11 +14210,11 @@ double _getSingleViewWidthForTimeLineView(_CalendarViewState viewState) {
 }
 
 /// Triggers vibration when resizing or dragging appointments
-Future<void> _triggerIntervalVibrationIfNeeded(_CalendarViewState state, int intervalHour, int intervalMinute) async {
+Future<void> _triggerIntervalVibrationIfNeeded(_CalendarViewState state, int intervalHour, int intervalMinute, { bool forceTrigger = false }) async {
   // Calculate current time interval (in 5-minute blocks from start of day)
   final int currentInterval = (intervalHour * 60 + intervalMinute) ~/ _kMinTimeIntervalInMinutes;
 
-  if (state._lastIntervalForVibration != null && state._lastIntervalForVibration != currentInterval) {
+  if (forceTrigger || (state._lastIntervalForVibration != null && state._lastIntervalForVibration != currentInterval)) {
     // Call the haptic feedback callback if provided, otherwise use default Flutter haptic feedback
     if (state.widget.calendar.onHapticFeedback != null) {
       await state.widget.calendar.onHapticFeedback!();
