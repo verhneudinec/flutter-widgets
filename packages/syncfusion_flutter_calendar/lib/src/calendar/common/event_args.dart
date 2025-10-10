@@ -598,3 +598,18 @@ typedef AppointmentDragUpdateCallback = void Function(
 /// * [SfCalendar], which uses this signature in one of it's callback.
 typedef AppointmentDragEndCallback = void Function(
     AppointmentDragEndDetails appointmentDragEndDetails);
+
+/// Signature for callback that provides haptic feedback during calendar
+/// interactions.
+///
+/// This callback is triggered when the calendar needs to provide haptic
+/// feedback to the user, such as during appointment resizing or dragging.
+/// The implementation should handle the vibration or haptic feedback
+/// according to the platform capabilities.
+///
+/// Used by [SfCalendar.onHapticFeedback].
+///
+/// See also:
+/// * [SfCalendar.onHapticFeedback], which matches this signature.
+/// * [SfCalendar], which uses this signature in one of it's callback.
+typedef CalendarHapticFeedbackCallback = Future<void> Function();

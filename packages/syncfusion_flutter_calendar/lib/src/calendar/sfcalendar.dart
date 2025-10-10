@@ -219,6 +219,7 @@ class SfCalendar extends StatefulWidget {
     this.onDragStart,
     this.onDragUpdate,
     this.onDragEnd,
+    this.onHapticFeedback,
     this.onEmptySpaceLongPressEnd,
     this.enablePreload = false,
   })  : assert(firstDayOfWeek >= 1 && firstDayOfWeek <= 7),
@@ -2220,6 +2221,47 @@ class SfCalendar extends StatefulWidget {
   /// }
   /// ```
   final AppointmentDragEndCallback? onDragEnd;
+
+  /// Called when the calendar needs to provide haptic feedback during
+  /// interactions.
+  ///
+  /// This callback is triggered when the calendar needs to provide haptic
+  /// feedback to the user, such as during appointment resizing or dragging.
+  /// The implementation should handle the vibration or haptic feedback
+  /// according to the platform capabilities.
+  ///
+  /// If this callback is null, no haptic feedback will be provided.
+  ///
+  /// Defaults to null.
+  ///
+  /// See also:
+  /// * [allowAppointmentResize], which enables appointment resizing.
+  /// * [allowDragAndDrop], which enables appointment dragging.
+  /// * [onAppointmentResizeStart], which is called when appointment resizing starts.
+  /// * [onDragStart], which is called when appointment dragging starts.
+  ///
+  /// ```dart
+  /// @override
+  /// Widget build(BuildContext context) {
+  ///   return MaterialApp(
+  ///     home: Scaffold(
+  ///       body: SfCalendar(
+  ///         view: CalendarView.week,
+  ///         allowAppointmentResize: true,
+  ///         allowDragAndDrop: true,
+  ///         onHapticFeedback: () async {
+  ///           // Provide custom haptic feedback
+  ///           if (await Vibration.hasVibrator()) {
+  ///             await Vibration.vibrate(duration: 30, amplitude: 10);
+  ///           }
+  ///         },
+  ///         dataSource: _getCalendarDataSource(),
+  ///       ),
+  ///     ),
+  ///   );
+  /// }
+  /// ```
+  final CalendarHapticFeedbackCallback? onHapticFeedback;
 
   /// An object that used for programmatic date navigation and date selection
   /// in [SfCalendar].

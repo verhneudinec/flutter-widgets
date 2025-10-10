@@ -11,7 +11,6 @@ import 'package:syncfusion_flutter_core/core.dart';
 import 'package:syncfusion_flutter_core/core_internal.dart';
 import 'package:syncfusion_flutter_core/localizations.dart';
 import 'package:syncfusion_flutter_core/theme.dart';
-import 'package:vibration/vibration.dart';
 
 import '../../../calendar.dart';
 import '../appointment_engine/appointment_helper.dart';
@@ -14200,14 +14199,12 @@ Future<void> _triggerIntervalVibrationIfNeeded(_CalendarViewState state, int int
   final int currentInterval = (intervalHour * 60 + intervalMinute) ~/ _kMinTimeIntervalInMinutes;
 
   if (state._lastIntervalForVibration != null && state._lastIntervalForVibration != currentInterval) {
-    try {
-      final bool hasVibrator = await Vibration.hasVibrator();
-
-      if (hasVibrator) {
-        await Vibration.vibrate(duration: 30, amplitude: 10);
-      }
-    } catch (e) {
-      // Do nothing
+    // Call the haptic feedback callback if provided, otherwise use default Flutter haptic feedback
+    if (state.widget.calendar.onHapticFeedback != null) {
+      await state.widget.calendar.onHapticFeedback!();
+    } else {
+      // Use default Flutter haptic feedback
+      HapticFeedback.lightImpact();
     }
   }
 
