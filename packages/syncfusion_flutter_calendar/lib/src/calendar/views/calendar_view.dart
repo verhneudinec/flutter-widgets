@@ -971,8 +971,18 @@ class _CustomCalendarScrollViewState extends State<CustomCalendarScrollView>
       _handleEmptySpaceLongPress(details, currentState, isTimelineView, viewHeaderHeight, timeLabelWidth);
       return;
     }
-
-    if (!isNeedDragAndDrop || appointmentView == null) {
+    
+    // Check if drag-and-drop is allowed for the appointment
+    final bool canDragDrop = isNeedDragAndDrop && appointmentView.appointment != null && (widget.calendar.appointmentDragAndDropFilter == null || 
+         widget.calendar.appointmentDragAndDropFilter!(appointmentView.appointment!));
+    
+    // Check if resize is allowed for the appointment
+    final bool canResize = widget.calendar.allowAppointmentResize && appointmentView.appointment != null && (widget.calendar.appointmentResizeFilter == null || 
+         widget.calendar.appointmentResizeFilter!(appointmentView.appointment!));
+    
+    // If neither drag-and-drop nor resize is allowed, exit
+    if (!canDragDrop && !canResize) {
+      currentState._clearSelection();
       _dragDetails.value.position.value = null;
       return;
     }
