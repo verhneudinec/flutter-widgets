@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:syncfusion_flutter_calendar/src/calendar/common/calendar_view_helper.dart';
 import '../../../calendar.dart';
 
 /// The dates that visible on the view changes in [SfCalendar].
@@ -613,3 +614,9 @@ typedef AppointmentDragEndCallback = void Function(
 /// * [SfCalendar.onHapticFeedback], which matches this signature.
 /// * [SfCalendar], which uses this signature in one of it's callback.
 typedef CalendarHapticFeedbackCallback = Future<void> Function();
+
+/// Signature for callback that used to filter the appointments.
+/// 
+/// Returns true if the operation is allowed for the given appointment,
+/// otherwise false.
+typedef AppointmentFilterCallback = bool Function(CalendarAppointment appointment);
