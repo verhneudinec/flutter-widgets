@@ -222,6 +222,8 @@ class SfCalendar extends StatefulWidget {
     this.onHapticFeedback,
     this.onEmptySpaceLongPressEnd,
     this.enablePreload = false,
+    this.appointmentResizeFilter,
+    this.appointmentDragAndDropFilter,
   })  : assert(firstDayOfWeek >= 1 && firstDayOfWeek <= 7),
         assert(headerHeight >= 0),
         assert(viewHeaderHeight >= -1),
@@ -2105,6 +2107,29 @@ class SfCalendar extends StatefulWidget {
   /// ```
   final bool allowDragAndDrop;
 
+  /// Filter that determines which appointments can be dragged and dropped.
+  ///
+  /// If set, only appointments for which this filter returns `true`
+  /// can be dragged and dropped. If the filter is not set, all appointments
+  /// can be dragged and dropped when [allowDragAndDrop] is set to `true`.
+  ///
+  /// ```dart
+  ///
+  /// Widget build(BuildContext context) {
+  ///    return Container(
+  ///      child: SfCalendar(
+  ///         allowDragAndDrop: true,
+  ///         appointmentDragAndDropFilter: (CalendarAppointment appointment) {
+  ///           // Allow dragging and dropping only for appointments with a specific subject
+  ///           return appointment.subject.contains('Draggable');
+  ///         },
+  ///      ),
+  ///    );
+  ///  }
+  ///
+  /// ```
+  final AppointmentFilterCallback? appointmentDragAndDropFilter;
+
   /// Allows to customize the drag and drop environment.
   ///
   /// See also:
@@ -2364,6 +2389,29 @@ class SfCalendar extends StatefulWidget {
   ///
   /// ```
   final bool allowAppointmentResize;
+  
+  /// Filter to determine which appointments can be resized.
+  ///
+  /// If set, only appointments for which this filter returns `true` can be
+  /// resized. If the filter is not set, all appointments can be resized
+  /// when [allowAppointmentResize] is `true`.
+  ///
+  /// ```dart
+  ///
+  /// Widget build(BuildContext context) {
+  ///    return Container(
+  ///      child: SfCalendar(
+  ///         allowAppointmentResize: true,
+  ///         appointmentResizeFilter: (CalendarAppointment appointment) {
+  ///           // Allow resizing only for appointments with a duration of more than 30 minutes
+  ///           return appointment.endTime.difference(appointment.startTime).inMinutes > 30;
+  ///         },
+  ///      ),
+  ///    );
+  ///  }
+  ///
+  /// ```
+  final AppointmentFilterCallback? appointmentResizeFilter;
 
   /// Called whenever the appointment starts to resizing in [SfCalendar].
   ///
