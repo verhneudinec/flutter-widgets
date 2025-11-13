@@ -1,4 +1,5 @@
 import 'dart:math' as math;
+import 'package:flutter/foundation.dart';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
@@ -311,13 +312,19 @@ class _AppointmentLayoutState extends State<AppointmentLayout> {
     for (int i = 0; i < _appointmentCollection.length; i++) {
       final AppointmentView appointmentView = _appointmentCollection[i];
       if (appointmentView.appointment != null &&
-          appointmentView.appointmentRect != null &&
-          appointmentView.appointmentRect!.left <= x &&
-          appointmentView.appointmentRect!.right >= x &&
-          appointmentView.appointmentRect!.top <= y &&
-          appointmentView.appointmentRect!.bottom >= y) {
-        selectedAppointmentView = appointmentView;
-        break;
+          appointmentView.appointmentRect != null) {
+
+        // Increase touch area for mobile devices
+        final double touchPadding = widget.isMobilePlatform ? 10.0 : 0.0;
+
+        if (appointmentView.appointmentRect!.left - touchPadding <= x &&
+            appointmentView.appointmentRect!.right + touchPadding >= x &&
+            appointmentView.appointmentRect!.top - touchPadding <= y &&
+            appointmentView.appointmentRect!.bottom + touchPadding >= y) {
+
+          selectedAppointmentView = appointmentView;
+          break;
+        }
       }
     }
 
@@ -515,7 +522,8 @@ class _AppointmentLayoutState extends State<AppointmentLayout> {
         widget.visibleDates,
         _indexAppointments,
         visibleStartIndex,
-        visibleEndIndex);
+        visibleEndIndex,
+        widget.calendar.appointmentSortComparator);
     final TextStyle style = widget.calendarTheme.todayTextStyle!;
     final TextSpan dateText =
         TextSpan(text: DateTime.now().day.toString(), style: style);

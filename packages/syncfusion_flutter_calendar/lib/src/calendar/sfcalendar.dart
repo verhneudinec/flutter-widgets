@@ -219,7 +219,12 @@ class SfCalendar extends StatefulWidget {
     this.onDragStart,
     this.onDragUpdate,
     this.onDragEnd,
+    this.onHapticFeedback,
+    this.onEmptySpaceLongPressEnd,
     this.enablePreload = false,
+    this.appointmentResizeFilter,
+    this.appointmentDragAndDropFilter,
+    this.appointmentSortComparator,
   })  : assert(firstDayOfWeek >= 1 && firstDayOfWeek <= 7),
         assert(headerHeight >= 0),
         assert(viewHeaderHeight >= -1),
@@ -1713,6 +1718,15 @@ class SfCalendar extends StatefulWidget {
   ///
   /// ```
   final ViewChangedCallback? onViewChanged;
+  
+  /// Called when a long press on empty space ends in [SfCalendar].
+  ///
+  /// The date and time at which the long press ended is passed to the callback.
+  ///
+  /// See also:
+  /// * [EmptySpaceLongPressEndCallback], which is the callback used by this.
+  /// * [onLongPress], which is called when a long press is detected on calendar elements.
+  final EmptySpaceLongPressEndCallback? onEmptySpaceLongPressEnd;
 
   /// Called whenever the [SfCalendar] elements tapped on view.
   ///
@@ -2094,6 +2108,29 @@ class SfCalendar extends StatefulWidget {
   /// ```
   final bool allowDragAndDrop;
 
+  /// Filter that determines which appointments can be dragged and dropped.
+  ///
+  /// If set, only appointments for which this filter returns `true`
+  /// can be dragged and dropped. If the filter is not set, all appointments
+  /// can be dragged and dropped when [allowDragAndDrop] is set to `true`.
+  ///
+  /// ```dart
+  ///
+  /// Widget build(BuildContext context) {
+  ///    return Container(
+  ///      child: SfCalendar(
+  ///         allowDragAndDrop: true,
+  ///         appointmentDragAndDropFilter: (CalendarAppointment appointment) {
+  ///           // Allow dragging and dropping only for appointments with a specific subject
+  ///           return appointment.subject.contains('Draggable');
+  ///         },
+  ///      ),
+  ///    );
+  ///  }
+  ///
+  /// ```
+  final AppointmentFilterCallback? appointmentDragAndDropFilter;
+
   /// Allows to customize the drag and drop environment.
   ///
   /// See also:
@@ -2211,6 +2248,47 @@ class SfCalendar extends StatefulWidget {
   /// ```
   final AppointmentDragEndCallback? onDragEnd;
 
+  /// Called when the calendar needs to provide haptic feedback during
+  /// interactions.
+  ///
+  /// This callback is triggered when the calendar needs to provide haptic
+  /// feedback to the user, such as during appointment resizing or dragging.
+  /// The implementation should handle the vibration or haptic feedback
+  /// according to the platform capabilities.
+  ///
+  /// If this callback is null, no haptic feedback will be provided.
+  ///
+  /// Defaults to null.
+  ///
+  /// See also:
+  /// * [allowAppointmentResize], which enables appointment resizing.
+  /// * [allowDragAndDrop], which enables appointment dragging.
+  /// * [onAppointmentResizeStart], which is called when appointment resizing starts.
+  /// * [onDragStart], which is called when appointment dragging starts.
+  ///
+  /// ```dart
+  /// @override
+  /// Widget build(BuildContext context) {
+  ///   return MaterialApp(
+  ///     home: Scaffold(
+  ///       body: SfCalendar(
+  ///         view: CalendarView.week,
+  ///         allowAppointmentResize: true,
+  ///         allowDragAndDrop: true,
+  ///         onHapticFeedback: () async {
+  ///           // Provide custom haptic feedback
+  ///           if (await Vibration.hasVibrator()) {
+  ///             await Vibration.vibrate(duration: 30, amplitude: 10);
+  ///           }
+  ///         },
+  ///         dataSource: _getCalendarDataSource(),
+  ///       ),
+  ///     ),
+  ///   );
+  /// }
+  /// ```
+  final CalendarHapticFeedbackCallback? onHapticFeedback;
+
   /// An object that used for programmatic date navigation and date selection
   /// in [SfCalendar].
   ///
@@ -2312,6 +2390,39 @@ class SfCalendar extends StatefulWidget {
   ///
   /// ```
   final bool allowAppointmentResize;
+  
+  /// Filter to determine which appointments can be resized.
+  ///
+  /// If set, only appointments for which this filter returns `true` can be
+  /// resized. If the filter is not set, all appointments can be resized
+  /// when [allowAppointmentResize] is `true`.
+  ///
+  /// ```dart
+  ///
+  /// Widget build(BuildContext context) {
+  ///    return Container(
+  ///      child: SfCalendar(
+  ///         allowAppointmentResize: true,
+  ///         appointmentResizeFilter: (CalendarAppointment appointment) {
+  ///           // Allow resizing only for appointments with a duration of more than 30 minutes
+  ///           return appointment.endTime.difference(appointment.startTime).inMinutes > 30;
+  ///         },
+  ///      ),
+  ///    );
+  ///  }
+  ///
+  /// ```
+  final AppointmentFilterCallback? appointmentResizeFilter;
+
+  /// Custom comparator to control the sort order of visible appointments.
+  ///
+  /// If set, this comparator is applied to the list of visible appointments
+  /// to override the default ordering (by start time, all-day, and spanning).
+  /// Use this to prioritize items based on your domain logic, e.g.
+  /// display unfinished tasks before completed ones.
+  /// 
+  /// Now works only for month and all-day views.
+  final AppointmentSortComparator? appointmentSortComparator;
 
   /// Called whenever the appointment starts to resizing in [SfCalendar].
   ///
@@ -4954,6 +5065,21 @@ class _SfCalendarState extends State<SfCalendar>
         if (currentView.startIndex <= i && currentView.endIndex >= i + 1) {
           intersectingAppointments.add(currentView);
         }
+      }
+
+      // Apply custom comparator for all-day appointments within the same day cell
+      // when provided via calendar.appointmentSortComparator.
+      if (widget.appointmentSortComparator != null && intersectingAppointments.isNotEmpty) {
+        intersectingAppointments.sort((AppointmentView a, AppointmentView b) {
+          final CalendarAppointment? ap1 = a.appointment;
+          final CalendarAppointment? ap2 = b.appointment;
+
+          if (ap1 == null || ap2 == null) {
+            return ap1 == ap2 ? 0 : (ap1 == null ? 1 : -1);
+          }
+
+          return widget.appointmentSortComparator!(ap1, ap2);
+        });
       }
 
       allDayAppointmentView.add(intersectingAppointments);

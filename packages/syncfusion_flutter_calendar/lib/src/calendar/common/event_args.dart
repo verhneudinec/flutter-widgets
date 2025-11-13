@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../../calendar.dart';
+import 'calendar_view_helper.dart';
 
 /// The dates that visible on the view changes in [SfCalendar].
 ///
@@ -485,6 +486,18 @@ typedef CalendarTapCallback = void Function(
 typedef CalendarLongPressCallback = void Function(
     CalendarLongPressDetails calendarLongPressDetails);
 
+/// Signature for callback that reports that a long press on empty space ended.
+///
+/// The [startTime] and [endTime] parameters provide the date and time range
+/// for the long press action.
+///
+/// Used by [SfCalendar.onEmptySpaceLongPressEnd].
+///
+/// See also:
+/// * [SfCalendar.onEmptySpaceLongPressEnd], which matches this signature.
+/// * [SfCalendar], which uses this signature in one of it's callback.
+typedef EmptySpaceLongPressEndCallback = Future<void> Function(DateTime startTime, DateTime endTime);
+
 /// Signature for callback that reports that
 /// a calendar view selection changed on view.
 ///
@@ -586,3 +599,33 @@ typedef AppointmentDragUpdateCallback = void Function(
 /// * [SfCalendar], which uses this signature in one of it's callback.
 typedef AppointmentDragEndCallback = void Function(
     AppointmentDragEndDetails appointmentDragEndDetails);
+
+/// Signature for callback that provides haptic feedback during calendar
+/// interactions.
+///
+/// This callback is triggered when the calendar needs to provide haptic
+/// feedback to the user, such as during appointment resizing or dragging.
+/// The implementation should handle the vibration or haptic feedback
+/// according to the platform capabilities.
+///
+/// Used by [SfCalendar.onHapticFeedback].
+///
+/// See also:
+/// * [SfCalendar.onHapticFeedback], which matches this signature.
+/// * [SfCalendar], which uses this signature in one of it's callback.
+typedef CalendarHapticFeedbackCallback = Future<void> Function();
+
+/// Signature for callback that used to filter the appointments.
+/// 
+/// Returns true if the operation is allowed for the given appointment,
+/// otherwise false.
+typedef AppointmentFilterCallback = bool Function(CalendarAppointment appointment);
+
+/// Comparator to customize the ordering of appointments.
+///
+/// When provided via `SfCalendar.appointmentSortComparator`, this comparator
+/// is applied to visible appointments to override the default ordering.
+/// Return a negative value if `a` should come before `b`, zero if equal,
+/// and a positive value if `a` should come after `b`.
+typedef AppointmentSortComparator = int Function(
+    CalendarAppointment a, CalendarAppointment b);
