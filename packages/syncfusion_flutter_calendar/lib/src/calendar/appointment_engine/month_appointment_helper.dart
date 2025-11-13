@@ -1,7 +1,9 @@
 import 'package:syncfusion_flutter_core/core.dart';
+import 'package:flutter/foundation.dart';
 
 import '../common/calendar_view_helper.dart';
 import '../common/date_time_engine.dart';
+import '../common/event_args.dart';
 import 'appointment_helper.dart';
 
 // ignore: avoid_classes_with_only_static_members
@@ -259,8 +261,22 @@ class MonthAppointmentHelper {
 
   static void _updateAppointmentPosition(
       List<AppointmentView> appointmentCollection,
-      Map<int, List<AppointmentView>> indexAppointments) {
+      Map<int, List<AppointmentView>> indexAppointments,
+      AppointmentSortComparator? sortComparator,
+  ) {
     appointmentCollection.sort(_orderAppointmentViewBySpanned);
+
+    if (sortComparator != null) {
+      appointmentCollection.sort((AppointmentView a, AppointmentView b) {
+        final CalendarAppointment? ap1 = a.appointment;
+        final CalendarAppointment? ap2 = b.appointment;
+        if (ap1 == null || ap2 == null) {
+          return ap1 == ap2 ? 0 : (ap1 == null ? 1 : -1);
+        }
+        
+        return sortComparator(ap1, ap2);
+      });
+    }
 
     for (int j = 0; j < appointmentCollection.length; j++) {
       final AppointmentView appointmentView = appointmentCollection[j];
@@ -357,11 +373,12 @@ class MonthAppointmentHelper {
       List<DateTime> visibleDates,
       Map<int, List<AppointmentView>> indexAppointments,
       int startIndex,
-      int endIndex) {
+      int endIndex,
+      AppointmentSortComparator? sortComparator) {
     _createVisibleAppointments(appointmentCollection, visibleAppointments,
         visibleDates, startIndex, endIndex);
     if (visibleAppointments.isNotEmpty) {
-      _updateAppointmentPosition(appointmentCollection, indexAppointments);
+      _updateAppointmentPosition(appointmentCollection, indexAppointments, sortComparator);
     }
   }
 }

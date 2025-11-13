@@ -1,4 +1,5 @@
 import 'dart:math' as math;
+import 'package:flutter/foundation.dart';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
@@ -521,7 +522,8 @@ class _AppointmentLayoutState extends State<AppointmentLayout> {
         widget.visibleDates,
         _indexAppointments,
         visibleStartIndex,
-        visibleEndIndex);
+        visibleEndIndex,
+        widget.calendar.appointmentSortComparator);
     final TextStyle style = widget.calendarTheme.todayTextStyle!;
     final TextSpan dateText =
         TextSpan(text: DateTime.now().day.toString(), style: style);

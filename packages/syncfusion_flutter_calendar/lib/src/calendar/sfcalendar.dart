@@ -224,6 +224,7 @@ class SfCalendar extends StatefulWidget {
     this.enablePreload = false,
     this.appointmentResizeFilter,
     this.appointmentDragAndDropFilter,
+    this.appointmentSortComparator,
   })  : assert(firstDayOfWeek >= 1 && firstDayOfWeek <= 7),
         assert(headerHeight >= 0),
         assert(viewHeaderHeight >= -1),
@@ -2412,6 +2413,16 @@ class SfCalendar extends StatefulWidget {
   ///
   /// ```
   final AppointmentFilterCallback? appointmentResizeFilter;
+
+  /// Custom comparator to control the sort order of visible appointments.
+  ///
+  /// If set, this comparator is applied to the list of visible appointments
+  /// to override the default ordering (by start time, all-day, and spanning).
+  /// Use this to prioritize items based on your domain logic, e.g.
+  /// display unfinished tasks before completed ones.
+  /// 
+  /// Now works only for month and all-day views.
+  final AppointmentSortComparator? appointmentSortComparator;
 
   /// Called whenever the appointment starts to resizing in [SfCalendar].
   ///
@@ -5054,6 +5065,21 @@ class _SfCalendarState extends State<SfCalendar>
         if (currentView.startIndex <= i && currentView.endIndex >= i + 1) {
           intersectingAppointments.add(currentView);
         }
+      }
+
+      // Apply custom comparator for all-day appointments within the same day cell
+      // when provided via calendar.appointmentSortComparator.
+      if (widget.appointmentSortComparator != null && intersectingAppointments.isNotEmpty) {
+        intersectingAppointments.sort((AppointmentView a, AppointmentView b) {
+          final CalendarAppointment? ap1 = a.appointment;
+          final CalendarAppointment? ap2 = b.appointment;
+
+          if (ap1 == null || ap2 == null) {
+            return ap1 == ap2 ? 0 : (ap1 == null ? 1 : -1);
+          }
+
+          return widget.appointmentSortComparator!(ap1, ap2);
+        });
       }
 
       allDayAppointmentView.add(intersectingAppointments);
