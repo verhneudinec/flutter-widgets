@@ -620,3 +620,12 @@ typedef CalendarHapticFeedbackCallback = Future<void> Function();
 /// Returns true if the operation is allowed for the given appointment,
 /// otherwise false.
 typedef AppointmentFilterCallback = bool Function(CalendarAppointment appointment);
+
+/// Comparator to customize the ordering of appointments.
+///
+/// When provided via `SfCalendar.appointmentSortComparator`, this comparator
+/// is applied to visible appointments to override the default ordering.
+/// Return a negative value if `a` should come before `b`, zero if equal,
+/// and a positive value if `a` should come after `b`.
+typedef AppointmentSortComparator = int Function(
+    CalendarAppointment a, CalendarAppointment b);
