@@ -372,7 +372,7 @@ class _AllDayAppointmentLayoutState extends State<AllDayAppointmentLayout> {
 
     /// Calculate the more appointments region when the widget as expandable
     /// and its max position greater than widget holding position.
-    if (widget.isExpandable && maxPosition > position && !widget.isExpanding) {
+    if (widget.isExpandable && maxPosition > position) {
       final List<int> keys = _indexAppointments.keys.toList();
       final int endIndexPosition = position - 1;
       for (int i = 0; i < keys.length; i++) {
@@ -1092,7 +1092,7 @@ class _AllDayAppointmentRenderObject extends CustomCalendarRenderObject {
       _addSelectionForAllDayPanel(context.canvas, size);
     }
 
-    if (isExpandable && _maxPosition > position && !isExpanding) {
+    if (isExpandable && _maxPosition > position) {
       if (child != null) {
         final double endYPosition =
             allDayPainterHeight - kAllDayAppointmentHeight;
@@ -1604,8 +1604,7 @@ class _AllDayAppointmentRenderObject extends CustomCalendarRenderObject {
     }
 
     if (isExpandable &&
-        _maxPosition > (allDayPainterHeight ~/ kAllDayAppointmentHeight) &&
-        !isExpanding) {
+        _maxPosition > (allDayPainterHeight ~/ kAllDayAppointmentHeight)) {
       final List<int> keys = moreAppointmentIndex.keys.toList();
       for (final int index in keys) {
         semanticsBuilder.add(CustomPainterSemantics(

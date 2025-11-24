@@ -219,6 +219,7 @@ class SfCalendar extends StatefulWidget {
     this.onDragStart,
     this.onDragUpdate,
     this.onDragEnd,
+    this.enablePreload = false,
   })  : assert(firstDayOfWeek >= 1 && firstDayOfWeek <= 7),
         assert(headerHeight >= 0),
         assert(viewHeaderHeight >= -1),
@@ -413,6 +414,24 @@ class SfCalendar extends StatefulWidget {
   ///
   /// ```
   final bool showCurrentTimeIndicator;
+
+  /// Enables preloading of appointment data for the next/previous pages during
+  /// swipe gestures. When enabled, data for adjacent pages is loaded in the
+  /// background to provide smoother navigation experience.
+  ///
+  /// Defaults to `true`.
+  ///
+  /// ``` dart
+  /// Widget build(BuildContext context) {
+  ///    return Container(
+  ///      child: SfCalendar(
+  ///        view: CalendarView.day,
+  ///        enablePreload: false,
+  ///      ),
+  ///    );
+  ///  }
+  /// ```
+  final bool enablePreload;
 
   /// Defines the view for the [SfCalendar].
   ///
@@ -4420,6 +4439,10 @@ class _SfCalendarState extends State<SfCalendar>
 
     if (_isNeedLoadMore || _isScheduleStartLoadMore) {
       SchedulerBinding.instance.addPostFrameCallback((Duration timeStamp) {
+        if (!mounted) {
+          return;
+        }
+        
         setState(() {
           _isNeedLoadMore = false;
           _isScheduleStartLoadMore = false;
@@ -4734,9 +4757,11 @@ class _SfCalendarState extends State<SfCalendar>
     /// because time label view needs the top position.
     _updateAllDayAppointment();
     SchedulerBinding.instance.addPostFrameCallback((Duration timeStamp) {
-      setState(() {
-        /// Update the UI.
-      });
+      if (mounted) {
+        setState(() {
+          /// Update the UI.
+        });
+      }
     });
   }
 
@@ -8540,6 +8565,7 @@ class _SfCalendarState extends State<SfCalendar>
             _blackoutDates,
             _controller,
             _removeDatePicker,
+            widget.enablePreload,
             _resourcePanelScrollController,
             _resourceCollection,
             _textScaleFactor,
